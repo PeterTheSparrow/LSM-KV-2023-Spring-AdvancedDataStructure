@@ -41,7 +41,6 @@ private:
     SkipNode * tailGuards = nullptr;
 
     SkipNode ** rightestNode = nullptr; //used while inserting a new SkipNode
-//    SkipNode * rightestNode = nullptr;
 
 private:
     SkipNode* searchNodePrivate(uint64_t keyToSearch);   //return the pointer(if the key doesn't exist, return nullptr

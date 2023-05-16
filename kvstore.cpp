@@ -85,13 +85,13 @@ KVStore::~KVStore()
         }
     }
     // clean vector
-    for(int i = 0; i < this->theCache.size();i++)
+    for(auto & i : this->theCache)
     {
-        this->theCache[i].clear();
+        // 通过swap完全释放内存
+        std::vector<SSTableCache *>().swap(i);
     }
-    this->theCache.clear();
-
-    this->levelDir.clear();
+    std::vector<std::vector<SSTableCache *>>().swap(this->theCache);
+    std::vector<std::string>().swap(this->levelDir);
 }
 
 /**
@@ -192,9 +192,10 @@ void KVStore::reset()
     // clean vector
     for(auto & i : this->theCache)
     {
-        i.clear();
+        // 通过swap完全释放内存
+        std::vector<SSTableCache *>().swap(i);
     }
-    this->theCache.clear();
+    std::vector<std::vector<SSTableCache *>>().swap(this->theCache);
 
     // 删除文件夹
     for(const auto & i : this->levelDir)

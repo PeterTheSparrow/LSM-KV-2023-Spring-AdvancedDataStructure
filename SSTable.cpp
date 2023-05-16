@@ -97,7 +97,7 @@ bool SSTable::findInSSTable(std::string & answer, uint64_t key)
         return false;
     }
     // bloom filter
-    if(filter->searchInFilter(key) == false)
+    if(!filter->searchInFilter(key))
     {
         return false;
     }
