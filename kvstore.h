@@ -18,7 +18,7 @@ public:
     IndexArea *indexArea;
     // 文件名其实是路径！
     std::string fileRoutine;
-    uint64_t timeStamp;
+    uint64_t timeStamp = 0;
 
 
     SSTableCache();
@@ -31,7 +31,7 @@ class KVStore : public KVStoreAPI
 {
     // You can add your implementation here
 private:
-    MemTable *memtable0 = nullptr;
+    MemTable * memTable0 = nullptr;
     uint64_t currentTimestamp = 0;
     std::string dataStoreDir;
     uint64_t currentLevel = 0;
@@ -53,7 +53,6 @@ public:
     std::string get(uint64_t key) override;
 
     bool del(uint64_t key) override;
-
     void reset() override;
 
     void scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>> &list) override;

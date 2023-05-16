@@ -4,8 +4,6 @@
 #include <string>
 #include <vector> // 数据区存放string用
 
-
-
 /**
  * 32字节的header，包括：
  *  (1）SSTable的时间戳
@@ -19,12 +17,20 @@ struct Header
     uint64_t minKey;
     uint64_t maxKey;
 
-    Header(uint64_t timeStamp, uint64_t keyValueNum, uint64_t minKey, uint64_t maxKey)
+    Header()
     {
-        this->timeStamp = timeStamp;
-        this->keyValueNum = keyValueNum;
-        this->minKey = minKey;
-        this->maxKey = maxKey;
+        timeStamp = 0;
+        keyValueNum = 0;
+        minKey = 0;
+        maxKey = 0;
+    }
+
+    void setAllDataInHeader(uint64_t theTimeStamp, uint64_t theKeyValueNum, uint64_t theMinKey, uint64_t theMaxKey)
+    {
+        timeStamp = theTimeStamp;
+        keyValueNum = theKeyValueNum;
+        minKey = theMinKey;
+        maxKey = theMaxKey;
     }
 };
 
@@ -71,7 +77,7 @@ public:
 
     bool findInSSTable(std::string &answer, uint64_t key);
 
-    void convertFileToSSTabe(std::string routine);
+    void convertFileToSSTable(std::string routine);
 
     void writeIntoDisk();
 };

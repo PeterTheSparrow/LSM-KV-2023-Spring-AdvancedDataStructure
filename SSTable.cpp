@@ -27,8 +27,9 @@ SSTable::~SSTable()
     dataSize = 0;
 }
 
-void SSTable::convertFileToSSTabe(std::string routine)
+void SSTable::convertFileToSSTable(std::string routine)
 {
+    std::cout << "we begin to convert " << routine << " to SSTable" << std::endl;
     std::ifstream fin(routine, std::ios::binary);
     if(!fin.is_open())
     {
@@ -54,8 +55,9 @@ void SSTable::convertFileToSSTabe(std::string routine)
     fin.read((char *)&minKey, sizeof(uint64_t));
     fin.read((char *)&maxKey, sizeof(uint64_t));
 
-    header = new Header(timeStamp, keyValueNum, minKey, maxKey);
-
+//    header = new Header(timeStamp, keyValueNum, minKey, maxKey);
+    header = new Header;
+    header->setAllDataInHeader(timeStamp, keyValueNum, minKey, maxKey);
     // 读取bloom filter
     filter = new BloomFilter;
 
@@ -83,6 +85,8 @@ void SSTable::convertFileToSSTabe(std::string routine)
     fin.read(dataArea, dataSize);
 
     fin.close();
+
+    std::cout << "we have converted " << routine << " to SSTable" << std::endl;
 }
 
 bool SSTable::findInSSTable(std::string & answer, uint64_t key)

@@ -32,6 +32,10 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
         {
             for(int i = 0; i < levelNum; i++)
             {
+                // 初始化该层的cache
+                std::vector<SSTableCache *> newLevelCache;
+                this->theCache.push_back(newLevelCache);
+
                 // 读文件，生成缓存，更新时间戳
                 // 读文件的时候，memTable是空白的对吧？
                 std::vector<std::string> fileNames;
@@ -40,7 +44,7 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
                 for(int j = 0; j < fileNumbers; j++)
                 {
                     SSTableCache * newCache = new SSTableCache;
-                    newCache->readFileToFormCache(routine+fileNames[j]);
+                    newCache->readFileToFormCache(routine + fileNames[j]);
                     this->theCache[i].push_back(newCache);
                     // 更新时间戳
                     if(newCache->header->timeStamp > this->currentTimestamp)
@@ -59,20 +63,20 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
         utils::mkdir((currentDir + "/level-0").c_str());
         this->dataStoreDir = currentDir;
         // 先实现内存的部分
-        this->memtable0 = new MemTable();
+        this->memTable0 = new MemTable();
     }
 }
 
 KVStore::~KVStore()
 {
     // 将memtable写入磁盘
-    if(memtable0->getSize() != 0)
+    if(memTable0->getSize() != 0)
     {
         this->convertMemTableIntoMemory();
     }
     // 进行一次文件的检查和归并
     this->checkCompaction();
-    delete memtable0;
+    delete memTable0;
     for(int i = 0; i < this->theCache.size();i++)
     {
         for(int j = 0; j < this->theCache[i].size(); j++)
@@ -97,19 +101,19 @@ KVStore::~KVStore()
 void KVStore::put(uint64_t key, const std::string &s)
 {
     // 判断大小
-    if (memtable0->getSize() + s.size() >= MAX_MEMTABLE_SIZE)
+    if (memTable0->getSize() + s.size() >= MAX_MEMTABLE_SIZE)
     {
         // 将跳表写入SSTable；
         this->convertMemTableIntoMemory();
         this->checkCompaction();
 
         // 清空跳表，将s写入跳表
-        this->memtable0->clearMemTable();
-        this->memtable0->put(key, s);
+        this->memTable0->clearMemTable();
+        this->memTable0->put(key, s);
         return;
     }
     // 没有超过大小，直接在跳表里面插入
-    memtable0->put(key, s);
+    memTable0->put(key, s);
 }
 /**
  * Returns the (string) value of the given key.
@@ -119,7 +123,7 @@ std::string KVStore::get(uint64_t key)
 {
     // 只实现内存的部分
 
-    std::string answer = memtable0->get(key);
+    std::string answer = memTable0->get(key);
     if (answer != "")
     {
         // 说明在sstable中找到了
@@ -149,7 +153,7 @@ std::string KVStore::get(uint64_t key)
 bool KVStore::del(uint64_t key)
 {
     // 注意到我们其实不能修改sstable中的内容，我们只能对memtable操作
-    return memtable0->del(key);
+    return memTable0->del(key);
 }
 
 /**
@@ -159,21 +163,13 @@ bool KVStore::del(uint64_t key)
 void KVStore::reset()
 {
     // 清除内存中的memtable
-    if (memtable0 != nullptr)
+    if (memTable0 != nullptr)
     {
-        delete memtable0;
-        memtable0 = nullptr;
+        delete memTable0;
+        memTable0 = nullptr;
     }
-    memtable0 = new MemTable();
+    memTable0 = new MemTable();
 
-    // 清除内存中的缓存
-    for(int i = 0; i < this->theCache.size();i++)
-    {
-        for(int j = 0; j < this->theCache[i].size(); j++)
-        {
-            delete this->theCache[i][j];
-        }
-    }
     // 清除磁盘中的文件
     for(int i = 0; i < this->theCache.size(); i++)
     {
@@ -183,21 +179,36 @@ void KVStore::reset()
             utils::rmfile(routine.c_str());
         }
     }
-    // clean vector
-    for(int i = 0; i < this->theCache.size();i++)
+
+    // 清除内存中的缓存
+    for(auto & i : this->theCache)
     {
-        this->theCache[i].clear();
+        for(int j = 0; j < i.size(); j++)
+        {
+            delete i[j];
+        }
+    }
+
+    // clean vector
+    for(auto & i : this->theCache)
+    {
+        i.clear();
     }
     this->theCache.clear();
 
     // 删除文件夹
-    for(int i = 0; i < this->levelDir.size(); i++)
+    for(const auto & i : this->levelDir)
     {
         // 由于levelDir中，保存的实际上是儿子文件夹的名称，所以要加上父亲文件夹的名称才构成路径
-        std::string routine = this->dataStoreDir + "/" + this->levelDir[i];
+        std::string routine = this->dataStoreDir + "/" + i;
         utils::rmdir(routine.c_str());
     }
-    utils::rmdir(this->dataStoreDir.c_str());
+
+    /*
+     * 重新创建文件夹：
+     * （1）这里两个文件夹是要留下来的：/data， /data/level-0
+     * */
+    utils::mkdir((this->dataStoreDir + "/level-0").c_str());
 }
 
 /**
@@ -212,7 +223,7 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 void KVStore::convertMemTableIntoMemory()
 {
     // TODO 将memtable中的内容写入磁盘
-    std::vector<std::pair<uint64_t, std::string>> allKVPairs = this->memtable0->getAllKVPairs();
+    std::vector<std::pair<uint64_t, std::string>> allKVPairs = this->memTable0->getAllKVPairs();
 
     // 把东西写入缓存
     SSTableCache *newCache;
@@ -225,8 +236,8 @@ void KVStore::convertMemTableIntoMemory()
     // Header, BloomFilter, IndexArea, DataArea
     *(uint64_t *)buffer = this->currentTimestamp;
     *(uint64_t *)(buffer + 8) = allKVPairs.size();
-    *(uint64_t *)(buffer + 16) = memtable0->getMinKey();
-    *(uint64_t *)(buffer + 24) = memtable0->getMaxKey();
+    *(uint64_t *)(buffer + 16) = memTable0->getMinKey();
+    *(uint64_t *)(buffer + 24) = memTable0->getMaxKey();
 
     // BloomFilter
     BloomFilter *theFilter = new BloomFilter;
@@ -265,6 +276,7 @@ void KVStore::convertMemTableIntoMemory()
 
         // TAG 写入缓存
         struct IndexData newIndexData(allKVPairs[i].first, offset);
+        newCache->indexArea = new IndexArea;
         newCache->indexArea->indexDataList.push_back(newIndexData);
 
         // 把string写入数据区
@@ -284,13 +296,23 @@ void KVStore::convertMemTableIntoMemory()
 
     delete[] buffer;
 
-    newCache->setAllData(memtable0->getMinKey(), memtable0->getMaxKey(), allKVPairs.size(), this->currentTimestamp, fileName, this->currentTimestamp);
+    newCache->setAllData(memTable0->getMinKey(), memTable0->getMaxKey(), allKVPairs.size(), this->currentTimestamp, fileName, this->currentTimestamp);
 
     newCache->bloomFilter = theFilter;
 
     // TAG 其实cache的传入可以在这里，我传入一个cache的指针，然后修改里面的内容，最后把这个指针append到vector里面去！
     // 直接加入第0层的cache，后面调整是后面的事情
-    this->theCache[0].push_back(newCache);
+    if(this->theCache.size() == 0)
+    {
+        std::vector<SSTableCache *> newLevel;
+        newLevel.push_back(newCache);
+        this->theCache.push_back(newLevel);
+    }
+    else
+    {
+        this->theCache[0].push_back(newCache);
+    }
+    // this->theCache[0].push_back(newCache);
 
     this->currentTimestamp += 1;
     // 把第0层的cache排序，按照时间戳从大到小排，这很重要！
@@ -301,7 +323,9 @@ void KVStore::convertMemTableIntoMemory()
 
 void SSTableCache::setAllData(uint64_t minKey, uint64_t maxKey, uint64_t numberOfPairs, uint64_t timeStamp, std::string fileName, uint64_t currentTime)
 {
-    this->header = new Header(timeStamp, numberOfPairs, minKey, maxKey);
+//    this->header = new Header(timeStamp, numberOfPairs, minKey, maxKey);
+    this->header = new Header;
+    this->header->setAllDataInHeader(timeStamp, numberOfPairs, minKey, maxKey);
     this->fileRoutine = fileName;
     bloomFilter = new BloomFilter;
     indexArea = new IndexArea;
@@ -312,7 +336,7 @@ void SSTableCache::setAllData(uint64_t minKey, uint64_t maxKey, uint64_t numberO
 bool KVStore::findInDisk1(std::string & answer, uint64_t key)
 {
     // 现在只有第0层，查找的时候就遍历文件
-    if(this->theCache.empty())
+    if(this->theCache[0].empty())
     {
         return false;
     }
@@ -322,7 +346,7 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
         // TODO 把文件变成SSTable，然后去判断里面有没有
         // SSTable *theSSTable = convertFileToSSTable(fileRoutine);
         SSTable *theSSTable = new SSTable;
-        theSSTable->convertFileToSSTabe(fileRoutine);
+        theSSTable->convertFileToSSTable(fileRoutine);
         if(theSSTable->findInSSTable(answer, key))
         {
             delete theSSTable;
@@ -344,13 +368,6 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
     return false;
 }
 
-// SSTable * KVStore::convertFileToSSTable(std::string routine)
-// {
-// 	SSTable * theSSTable = new SSTable;
-
-// 	return nullptr;
-// }
-
 void KVStore::checkCompaction()
 {
 
@@ -364,13 +381,18 @@ void KVStore::compactSingleLevel(int levelNum)
 SSTableCache::~SSTableCache()
 {
     delete header;
+    header = nullptr;
+
     delete bloomFilter;
+    bloomFilter = nullptr;
+
     delete indexArea;
+    indexArea = nullptr;
 }
 
 SSTableCache::SSTableCache()
 {
-    header = nullptr;
+    header = new Header;
     bloomFilter = nullptr;
     indexArea = nullptr;
 }
