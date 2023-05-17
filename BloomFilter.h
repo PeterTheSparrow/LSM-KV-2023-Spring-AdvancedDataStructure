@@ -13,18 +13,29 @@
 class BloomFilter
 {
 private:
-    uint32_t hashTable[4] = {0};
+    uint32_t *hashTable;
 
 public:
-    bool checkBits[10240] = {false};
+    bool *checkBits;
 
+public:
     BloomFilter()
     {
-
+        checkBits = new bool[10240];
+        for(int i = 0; i < 10240; i++)
+        {
+            checkBits[i] = false;
+        }
+        hashTable = new uint32_t[4];
+        for(int i = 0; i < 4; i++)
+        {
+            hashTable[i] = 0;
+        }
     }
     ~BloomFilter()
     {
-
+        delete [] checkBits;
+        delete [] hashTable;
     }
     /**
      * @brief 将 key 加入到布隆过滤器中

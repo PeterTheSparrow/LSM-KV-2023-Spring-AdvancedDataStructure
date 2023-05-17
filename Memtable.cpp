@@ -10,11 +10,7 @@ MemTable::MemTable()
 
 MemTable::~MemTable()
 {
-    if(skiplist0 == nullptr)
-    {
-        delete skiplist0;
-        skiplist0 = nullptr;
-    }
+    delete skiplist0;
 }
 
 uint64_t MemTable::getSize()
