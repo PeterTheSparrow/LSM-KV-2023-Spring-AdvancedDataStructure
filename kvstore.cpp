@@ -5,11 +5,8 @@
 #include "utils.h"
 #include <algorithm>
 
-// CorrectnessTest test("./data", verbose);
 KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
 {
-    // 实现从路径中恢复磁盘文件的部分
-    // 所有SSTable要放在dir下面
     std::string currentDir = dir;
 
     if(currentDir[currentDir.size()-1] == '/')
@@ -17,11 +14,10 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
         currentDir = currentDir.substr(0, currentDir.size()-1);
     }
 
-    // check dir是否存在
     if (utils::dirExists(currentDir))
     {
         this->dataStoreDir = currentDir;
-        // 如果存在，那就读文件，生成缓存，更新class的时间戳！
+        // 如果存在，那就读文件，生成缓存，更新class的时间戳
         // 扫描指定目录下的所有文件和子目录，并将文件名和子目录名保存到一个字符串向量中。
         int levelNum = utils::scanDir(currentDir, this->levelDir);
         if(levelNum == 0)
@@ -72,7 +68,7 @@ KVStore::~KVStore()
     // 将memtable写入磁盘
     if(memTable0->getSize() != 0)
     {
-        this->convertMemTableIntoMemory(); // 其实这里也把东西写入了缓存，其实是没有必要的，但是后面反正要清除缓存，就这样吧。
+        this->convertMemTableIntoMemoryWithoutCache();
     }
     // 进行一次文件的检查和归并
     this->checkCompaction();
@@ -349,9 +345,12 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
         theSSTable->convertFileToSSTable(fileRoutine);
         if(theSSTable->findInSSTable(answer, key))
         {
+            std::cout << "find in disk1" << std::endl;
             delete theSSTable;
             return true;
         }
+        std::cout << "not find in disk1" << std::endl;
+        delete theSSTable;
     }
     return false;
 }
@@ -376,6 +375,74 @@ void KVStore::checkCompaction()
 void KVStore::compactSingleLevel(int levelNum)
 {
     return;
+}
+
+void KVStore::convertMemTableIntoMemoryWithoutCache() {
+    // 将memtable中的内容写入磁盘；但是不加入缓存，因为是析构函数的时候使用
+    std::vector<std::pair<uint64_t, std::string>> allKVPairs = this->memTable0->getAllKVPairs();
+
+
+    // 把东西写成文件
+    const std::string dir = this->dataStoreDir + "/level-0";
+    char *buffer = new char[MAX_MEMTABLE_SIZE];
+
+    // Header, BloomFilter, IndexArea, DataArea
+    *(uint64_t *)buffer = this->currentTimestamp;
+    *(uint64_t *)(buffer + 8) = allKVPairs.size();
+    *(uint64_t *)(buffer + 16) = memTable0->getMinKey();
+    *(uint64_t *)(buffer + 24) = memTable0->getMaxKey();
+
+    BloomFilter *bloomFilter = new BloomFilter;
+
+    for (int i = 0; i < allKVPairs.size(); i++)
+    {
+        bloomFilter->addIntoFilter(allKVPairs[i].first);
+    }
+
+    // BloomFilter写入buffer
+    for (int i = 0; i < 10240; i++)
+    {
+        if (bloomFilter->checkBits[i])
+        {
+            buffer[i + 32] = '1';
+        }
+        else
+        {
+            buffer[i + 32] = '0';
+        }
+    }
+
+    // IndexArea
+    // 我突然顿悟了，在这里存储数据的时候我可以直接用vector存，但是从文件里面读数据的时候我需要用偏移量！
+    char *indexStart = buffer + 10240 + 32;
+    int padding = 0; // 指针走过的量
+
+    // 索引区到数据区的偏移量
+    int offset = 10240 + 32 + (8 + 4) * allKVPairs.size();
+
+    for (int i = 0; i < allKVPairs.size(); i++)
+    {
+        // 写入索引区
+        *(uint64_t *)(indexStart + padding) = allKVPairs[i].first;
+        *(uint32_t *)(indexStart + padding + 8) = offset;
+
+        // 把string写入数据区
+        memcpy(buffer + offset, allKVPairs[i].second.c_str(), allKVPairs[i].second.size());
+
+        padding += 12;
+        offset += allKVPairs[i].second.size();
+    }
+
+    // 文件名取名为当时的时间
+    std::string fileName = dir + "/" + std::to_string(this->currentTimestamp) + ".sst";
+
+    // 把buffer写入文件
+    std::ofstream fout(fileName, std::ios::out | std::ios::binary);
+    fout.write(buffer, MAX_MEMTABLE_SIZE);
+    fout.close();
+
+    delete[] buffer;
+    delete bloomFilter;
 }
 
 

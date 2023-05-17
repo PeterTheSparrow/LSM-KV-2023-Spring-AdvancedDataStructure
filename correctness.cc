@@ -7,7 +7,8 @@
 class CorrectnessTest : public Test {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
-	const uint64_t LARGE_TEST_MAX = 1024 * 64;
+//	const uint64_t LARGE_TEST_MAX = 1024 * 64;
+    const uint64_t LARGE_TEST_MAX = 1024 * 2;
 
 	void regular_test(uint64_t max)
 	{
@@ -105,9 +106,9 @@ public:
 		std::cout << "finished simple test" << std::endl;
 		
 		store.reset();
-//
-//		 std::cout << "[Large Test]" << std::endl;
-//		 regular_test(LARGE_TEST_MAX);
+
+		 std::cout << "[Large Test]" << std::endl;
+		 regular_test(LARGE_TEST_MAX);
 	}
 };
 

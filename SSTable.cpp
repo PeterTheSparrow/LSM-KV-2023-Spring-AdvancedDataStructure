@@ -76,8 +76,8 @@ void SSTable::convertFileToSSTable(std::string routine)
 
     // 读取data area
     // 数据段的大小：文件大小 - 头部大小 - 布隆过滤器大小 总长度 - 32 - 10240 - 12 * numberOfKVPairs
-    // int dataSize = 2 * 1024 * 1024 - 32 - 10240 - 12 * keyValueNum;
-    int dataSize = fileSize - 32 - 10240 - 12 * keyValueNum;
+     int dataSize = 2 * 1024 * 1024 - 32 - 10240 - 12 * keyValueNum;
+//    int dataSize = fileSize - 32 - 10240 - 12 * keyValueNum;
 
     dataArea = new char[dataSize];
 

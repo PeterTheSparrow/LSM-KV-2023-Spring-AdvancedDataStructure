@@ -58,7 +58,10 @@ public:
     void scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, std::string>> &list) override;
 
 private:
+    // 将Memtable转化到磁盘中
     void convertMemTableIntoMemory();
+    // 将Memtable转化到磁盘中，但是不往缓存中添加内容
+    void convertMemTableIntoMemoryWithoutCache();
 
     // 根据不同的缓存策略，实现不同的在磁盘里搜索的代码
     // 不缓存
