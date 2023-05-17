@@ -143,7 +143,7 @@ SkipList::~SkipList() {
     for (int i = 0; i <= this->maxHeight; i++)
     {
         currentNode = headGuards[i].successorNode;
-        while (currentNode->isGuard == false)
+        while (!currentNode->isGuard)
         {
             nextNode = currentNode->successorNode;
             delete currentNode;
@@ -160,6 +160,14 @@ SkipList::~SkipList() {
 
     headGuards = nullptr;
     tailGuards = nullptr;
+
+    // 清理vector
+    for(auto & i : this->towerButtonVec)
+    {
+        delete i;
+    }
+    // use swap to clear vector
+    std::vector<SkipNode*>().swap(this->towerButtonVec);
 }
 
 /*
@@ -286,10 +294,13 @@ void SkipList::insertNode(uint64_t keyToSearch, std::string valueToReplace) {
             newTower[j] = new SkipNode;
             newTower[j]->key = keyToSearch;
             if(j != 0)
-                newTower[j]->underNode = newTower[j-1];//initialize the underNode pointer
+                newTower[j]->underNode = newTower[j-1]; //initialize the underNode pointer
             else
                 newTower[j]->underNode = nullptr;
         }
+
+        // 为了解决内存泄漏的问题
+        this->towerButtonVec.push_back(newTower[0]);
 
 //        //for debug
 //        this->debugFunc();

@@ -1,18 +1,13 @@
 #include <iostream>
 #include "SkipList.h"
 #include <vector>
-
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
-#include <crtdbg.h>
+#include <cassert>
 #include "utils.h"
 
 /**
  * @brief 用于测试SkipList的功能
- * 
  * @return null
  */
-
 void testSkipList()
 {
     SkipList * skipList = new SkipList();
@@ -28,9 +23,9 @@ void testSkipList()
 
     std::vector<std::pair<uint64_t, std::string>> allKVPairs = skipList->getAllKVPairs();
     std::cout << "allKVPairs.size() = " << allKVPairs.size() << std::endl;
-    for(int i = 0; i < allKVPairs.size(); i++)
+    for(auto & allKVPair : allKVPairs)
     {
-        std::cout << allKVPairs[i].first << " " << allKVPairs[i].second << std::endl;
+        std::cout << allKVPair.first << " " << allKVPair.second << std::endl;
     }
 
     // 测试最大、最小值
@@ -45,12 +40,13 @@ void testSkipList()
     skipList->insertNode(2, "jayChou");
     allKVPairs = skipList->getAllKVPairs();
     std::cout << "allKVPairs.size() = " << allKVPairs.size() << std::endl;
-    for(int i = 0; i < allKVPairs.size(); i++)
+    for(auto & allKVPair : allKVPairs)
     {
-        std::cout << allKVPairs[i].first << " " << allKVPairs[i].second << std::endl;
+        std::cout << allKVPair.first << " " << allKVPair.second << std::endl;
     }
 
-    _CrtDumpMemoryLeaks();
+    delete skipList;
+
 }
 
 /**
@@ -78,9 +74,62 @@ void testFileReadWrite()
     }
 }
 
+void testMemoryLeaking()
+{
+    SkipNode * headNode1 = new SkipNode();
+//    SkipNode * headNode2 = new SkipNode();
+//
+//    SkipNode ** newTower = new SkipNode*[2];
+//    newTower[0] = new SkipNode();
+//    newTower[1] = new SkipNode();
+//
+//    newTower[0]->underNode = newTower[1];
+//
+//    headNode1->successorNode = newTower[0];
+//    headNode2->successorNode = newTower[1];
+//
+//    delete headNode1->successorNode;
+//    delete headNode2->successorNode;
+//
+//    delete headNode1;
+//    delete headNode2;
+//
+//    delete [] newTower;
+
+
+}
+
+void anotherTestForSkipList()
+{
+    SkipList * skipList = new SkipList();
+    for(int i = 0; i < 1000; i++)
+    {
+        skipList->insertNode(i, std::to_string(i));
+    }
+    std::cout << "insert done" << std::endl;
+    for(int i = 0; i < 1000; i++)
+    {
+//        std::string value = skipList->searchNode(i)->value;
+//        std::cout << value << std::endl;
+        // use assert to check
+        assert(skipList->searchNode(i)->value == std::to_string(i));
+    }
+    std::cout << "search done" << std::endl;
+    // get min key
+    assert(skipList->getMinKey() == 0);
+    // get max key
+    assert(skipList->getMaxKey() == 999);
+    // get number of kv pairs
+    assert(skipList->getNumOfKVPairs() == 1000);
+
+    delete skipList;
+}
+
 int main()
 {
-    // testSkipList();
-    testFileReadWrite();
+//    testSkipList();
+//    testFileReadWrite();
+//    testMemoryLeaking();
+    anotherTestForSkipList();
     return 0;
 }

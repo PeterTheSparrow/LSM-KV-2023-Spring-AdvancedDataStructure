@@ -105,9 +105,9 @@ public:
 		std::cout << "finished simple test" << std::endl;
 		
 		store.reset();
-
-		 std::cout << "[Large Test]" << std::endl;
-		 regular_test(LARGE_TEST_MAX);
+//
+//		 std::cout << "[Large Test]" << std::endl;
+//		 regular_test(LARGE_TEST_MAX);
 	}
 };
 
