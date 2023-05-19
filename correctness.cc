@@ -8,7 +8,7 @@ class CorrectnessTest : public Test {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
 //	const uint64_t LARGE_TEST_MAX = 1024 * 64;
-    const uint64_t LARGE_TEST_MAX = 1024 * 2;
+    const uint64_t LARGE_TEST_MAX = 1024 * 4;
 
 	void regular_test(uint64_t max)
 	{
@@ -17,10 +17,8 @@ private:
 		// Test a single key
 		std::cout << "Test a single key" << std::endl;
 		EXPECT(not_found, store.get(1));
-//        std::cout << "Test a single key done" << std::endl;
 		store.put(1, "SE");
 		EXPECT("SE", store.get(1));
-//        std::cout << "Test a single key done" << std::endl;
 		EXPECT(true, store.del(1));
 		EXPECT(not_found, store.get(1));
 		EXPECT(false, store.del(1));
@@ -74,12 +72,33 @@ private:
 
 		// Test deletions
 		std::cout << "Test deletions" << std::endl;
+        // delete all the even numbers
 		for (i = 0; i < max; i+=2)
 			EXPECT(true, store.del(i));
 
 		for (i = 0; i < max; ++i)
 			EXPECT((i & 1) ? std::string(i+1, 's') : not_found,
 			       store.get(i));
+        // for debug
+        std::string answer = "";
+        for (i = 0; i < max; ++i)
+        {
+            if(i % 2 == 0)
+            {
+                answer = store.get(i);
+                if(answer != "")
+                {
+                    std::cout << "wrong i = " << i << "answer = " << answer << std::endl;
+                }
+            }
+            else
+            {
+                if(store.get(i) != std::string(i+1, 's'))
+                {
+                    std::cout << "incorrect i = " << i << std::endl;
+                }
+            }
+        }
 
 		for (i = 1; i < max; ++i)
 			EXPECT(i & 1, store.del(i));
@@ -107,8 +126,8 @@ public:
 		
 		store.reset();
 
-		 std::cout << "[Large Test]" << std::endl;
-		 regular_test(LARGE_TEST_MAX);
+        std::cout << "[Large Test]" << std::endl;
+        regular_test(LARGE_TEST_MAX);
 	}
 };
 

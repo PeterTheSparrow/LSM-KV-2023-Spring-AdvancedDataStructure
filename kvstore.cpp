@@ -65,7 +65,7 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
 
 KVStore::~KVStore()
 {
-    // 将memtable写入磁盘
+    // 将MemTable写入磁盘
     if(memTable0->getSize() != 0)
     {
         this->convertMemTableIntoMemoryWithoutCache();
@@ -121,14 +121,16 @@ void KVStore::put(uint64_t key, const std::string &s)
  */
 std::string KVStore::get(uint64_t key)
 {
-    // 只实现内存的部分
-
     std::string answer = memTable0->get(key);
+    if(answer == "~DELETED~")
+    {
+        return "";
+    }
     if (answer != "")
     {
-        // 说明在sstable中找到了
         return answer;
     }
+
 
     // TODO 实现存储的部分——读文件，把文件读到内存中，转化为SSTable，然后查找
     // 遍历所有文件缓存
@@ -153,7 +155,17 @@ std::string KVStore::get(uint64_t key)
 bool KVStore::del(uint64_t key)
 {
     // 注意到我们其实不能修改sstable中的内容，我们只能对memtable操作
-    return memTable0->del(key);
+    // 先全局搜索（注意！不仅仅是搜索内存，也包括磁盘！）
+    std::string answer = this->get(key);
+    if(answer == "")
+    {
+        return false;
+    }
+    else
+    {
+        this->memTable0->put(key, "~DELETED~");
+        return true;
+    }
 }
 
 /**
@@ -223,13 +235,13 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 
 void KVStore::convertMemTableIntoMemory()
 {
-    // TODO 将memtable中的内容写入磁盘
+    // 将MemTable的东西写入磁盘
     std::vector<std::pair<uint64_t, std::string>> allKVPairs = this->memTable0->getAllKVPairs();
 
     // 把东西写入缓存
     SSTableCache *newCache;
     newCache = new SSTableCache;
-//    newCache->bloomFilter = new BloomFilter;
+    newCache->indexArea = new IndexArea;
 
     // 把东西写成文件
     const std::string dir = this->dataStoreDir + "/level-0";
@@ -259,30 +271,30 @@ void KVStore::convertMemTableIntoMemory()
         }
     }
 
-    // IndexArea
-    // 我突然顿悟了，在这里存储数据的时候我可以直接用vector存，但是从文件里面读数据的时候我需要用偏移量！
     char *indexStart = buffer + 10240 + 32;
     int padding = 0; // 指针走过的量
 
-    // 索引区到数据区的偏移量
-    int offset = 10240 + 32 + (8 + 4) * allKVPairs.size();
+    // 每一个我写到表里面的偏移量，是相对于数据区开始的偏移量
+    char * length_from_data_to_file_begin = (10240 + 32 + 12 * allKVPairs.size()) + buffer;
+    uint32_t offset_from_data_begin = 0;
 
     for (int i = 0; i < allKVPairs.size(); i++)
     {
         // 写入索引区
         *(uint64_t *)(indexStart + padding) = allKVPairs[i].first;
-        *(uint32_t *)(indexStart + padding + 8) = offset;
+        *(uint32_t *)(indexStart + padding + 8) = offset_from_data_begin;
 
         // TAG 写入缓存
-        struct IndexData newIndexData(allKVPairs[i].first, offset);
-        newCache->indexArea = new IndexArea;
-        newCache->indexArea->indexDataList.push_back(newIndexData);
+        struct IndexData *newIndexData = new IndexData(allKVPairs[i].first, offset_from_data_begin);
+        newCache->indexArea->indexDataList.push_back(*newIndexData);
+        delete newIndexData;
 
         // 把string写入数据区
-        memcpy(buffer + offset, allKVPairs[i].second.c_str(), allKVPairs[i].second.size());
+        memcpy(length_from_data_to_file_begin, allKVPairs[i].second.c_str(), allKVPairs[i].second.size());
 
         padding += 12;
-        offset += allKVPairs[i].second.size();
+        offset_from_data_begin += allKVPairs[i].second.size();
+        length_from_data_to_file_begin += allKVPairs[i].second.size();
     }
 
     // 文件名取名为当时的时间
@@ -290,7 +302,7 @@ void KVStore::convertMemTableIntoMemory()
 
     // 把buffer写入文件
     std::ofstream fout(fileName, std::ios::out | std::ios::binary);
-    fout.write(buffer, MAX_MEMTABLE_SIZE);
+    fout.write((char *)buffer, offset_from_data_begin + 10240 + 32 + 12 * allKVPairs.size());
     fout.close();
 
     delete[] buffer;
@@ -310,7 +322,7 @@ void KVStore::convertMemTableIntoMemory()
         this->theCache[0].push_back(newCache);
     }
 
-    this->currentTimestamp += 1;
+    this->currentTimestamp += 1;//时间戳只能这里加，因为前面需要更新缓存的时间
     // 把第0层的cache排序，按照时间戳从大到小排，这很重要！
     std::sort(theCache[0].begin(),theCache[0].end(), [](const SSTableCache * a, SSTableCache *b){
         return a->timeStamp > b->timeStamp;
@@ -319,7 +331,6 @@ void KVStore::convertMemTableIntoMemory()
 
 void SSTableCache::setAllData(uint64_t minKey, uint64_t maxKey, uint64_t numberOfPairs, uint64_t timeStamp, std::string fileName, uint64_t currentTime)
 {
-//    this->header = new Header(timeStamp, numberOfPairs, minKey, maxKey);
     this->header = new Header;
     this->header->setAllDataInHeader(timeStamp, numberOfPairs, minKey, maxKey);
     this->fileRoutine = fileName;
@@ -336,20 +347,17 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
     {
         return false;
     }
-    for(auto it = this->theCache[0].begin(); it != this->theCache[0].end(); it++)
+    for(auto & it : this->theCache[0])
     {
-        std::string fileRoutine = (*it)->fileRoutine;
-        // TODO 把文件变成SSTable，然后去判断里面有没有
-        // SSTable *theSSTable = convertFileToSSTable(fileRoutine);
+        std::string fileRoutine = it->fileRoutine;
+
         SSTable *theSSTable = new SSTable;
         theSSTable->convertFileToSSTable(fileRoutine);
         if(theSSTable->findInSSTable(answer, key))
         {
-            std::cout << "find in disk1" << std::endl;
             delete theSSTable;
             return true;
         }
-        std::cout << "not find in disk1" << std::endl;
         delete theSSTable;
     }
     return false;
@@ -378,9 +386,8 @@ void KVStore::compactSingleLevel(int levelNum)
 }
 
 void KVStore::convertMemTableIntoMemoryWithoutCache() {
-    // 将memtable中的内容写入磁盘；但是不加入缓存，因为是析构函数的时候使用
+    // 将MemTable中的内容写入磁盘；但是不加入缓存，因为是析构函数的时候使用
     std::vector<std::pair<uint64_t, std::string>> allKVPairs = this->memTable0->getAllKVPairs();
-
 
     // 把东西写成文件
     const std::string dir = this->dataStoreDir + "/level-0";
@@ -412,33 +419,34 @@ void KVStore::convertMemTableIntoMemoryWithoutCache() {
         }
     }
 
-    // IndexArea
-    // 我突然顿悟了，在这里存储数据的时候我可以直接用vector存，但是从文件里面读数据的时候我需要用偏移量！
     char *indexStart = buffer + 10240 + 32;
     int padding = 0; // 指针走过的量
 
-    // 索引区到数据区的偏移量
-    int offset = 10240 + 32 + (8 + 4) * allKVPairs.size();
+    // 每一个我写到表里面的偏移量，是相对于数据区开始的偏移量
+    char * length_from_data_to_file_begin = (10240 + 32 + 12 * allKVPairs.size()) + buffer;
+    uint32_t offset_from_data_begin = 0;
 
     for (int i = 0; i < allKVPairs.size(); i++)
     {
         // 写入索引区
         *(uint64_t *)(indexStart + padding) = allKVPairs[i].first;
-        *(uint32_t *)(indexStart + padding + 8) = offset;
+        *(uint32_t *)(indexStart + padding + 8) = offset_from_data_begin;
 
         // 把string写入数据区
-        memcpy(buffer + offset, allKVPairs[i].second.c_str(), allKVPairs[i].second.size());
+        memcpy(length_from_data_to_file_begin, allKVPairs[i].second.c_str(), allKVPairs[i].second.size());
 
         padding += 12;
-        offset += allKVPairs[i].second.size();
+        offset_from_data_begin += allKVPairs[i].second.size();
+        length_from_data_to_file_begin += allKVPairs[i].second.size();
     }
 
     // 文件名取名为当时的时间
     std::string fileName = dir + "/" + std::to_string(this->currentTimestamp) + ".sst";
 
+
     // 把buffer写入文件
     std::ofstream fout(fileName, std::ios::out | std::ios::binary);
-    fout.write(buffer, MAX_MEMTABLE_SIZE);
+    fout.write((char *)buffer, offset_from_data_begin + 10240 + 32 + 12 * allKVPairs.size()); // TODO 这里写的时候把完整的长度都写进去了
     fout.close();
 
     delete[] buffer;

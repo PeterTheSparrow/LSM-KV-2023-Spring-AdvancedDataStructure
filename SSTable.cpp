@@ -29,8 +29,7 @@ SSTable::~SSTable()
 
 void SSTable::convertFileToSSTable(std::string routine)
 {
-    std::cout << "we begin to convert " << routine << " to SSTable" << std::endl;
-    std::ifstream fin(routine, std::ios::binary);
+    std::ifstream fin(routine, std::ios::in | std::ios::binary);
     if(!fin.is_open())
     {
         std::cout << "open file error" << std::endl;
@@ -39,7 +38,7 @@ void SSTable::convertFileToSSTable(std::string routine)
     // 计算整个文件大小
 
     fin.seekg(0, std::ios::end);    // 定位到文件末尾
-    int fileSize = fin.tellg();// 获得文件长度
+    int fileSize = fin.tellg();     // 获得文件长度
     fin.seekg(0, std::ios::beg);    // 定位到文件头
 
     // 开始正式读取文件
@@ -55,10 +54,12 @@ void SSTable::convertFileToSSTable(std::string routine)
     fin.read((char *)&minKey, sizeof(uint64_t));
     fin.read((char *)&maxKey, sizeof(uint64_t));
 
-//    header = new Header(timeStamp, keyValueNum, minKey, maxKey);
+//    std::cout << timeStamp << std::endl;
+//    std::cout << keyValueNum << std::endl;
+
     header = new Header;
     header->setAllDataInHeader(timeStamp, keyValueNum, minKey, maxKey);
-    // 读取bloom filter
+
     filter = new BloomFilter;
 
     fin.read((char *)(filter->checkBits), 10240 * sizeof(char));
@@ -74,10 +75,8 @@ void SSTable::convertFileToSSTable(std::string routine)
         indexArea->indexDataList.push_back(IndexData(key, offset));
     }
 
-    // 读取data area
-    // 数据段的大小：文件大小 - 头部大小 - 布隆过滤器大小 总长度 - 32 - 10240 - 12 * numberOfKVPairs
-     int dataSize = 2 * 1024 * 1024 - 32 - 10240 - 12 * keyValueNum;
-//    int dataSize = fileSize - 32 - 10240 - 12 * keyValueNum;
+    int dataSize = fileSize - 32 - 10240 - 12 * keyValueNum;
+    this->dataSize = dataSize;
 
     dataArea = new char[dataSize];
 
@@ -85,8 +84,6 @@ void SSTable::convertFileToSSTable(std::string routine)
     fin.read(dataArea, dataSize);
 
     fin.close();
-
-    std::cout << "we have converted " << routine << " to SSTable" << std::endl;
 }
 
 bool SSTable::findInSSTable(std::string & answer, uint64_t key)
@@ -119,6 +116,10 @@ bool SSTable::findInSSTable(std::string & answer, uint64_t key)
                 length = (it + 1)->offset - offset;
             }
             answer = std::string(this->dataArea + offset, length);
+//            if(answer == "~DELETED~")
+//            {
+//                return false;
+//            }
             return true;
         }
     }

@@ -50,8 +50,10 @@ void MemTable::put(uint64_t key, const std::string &s)
 std::string MemTable::get(uint64_t key)
 {
     SkipNode *node0 = skiplist0->searchNode(key);
-    if (node0 == nullptr || node0->value == "~DELETED~")
+    if (node0 == nullptr)
         return "";
+    else if(node0->value == "~DELETED~")
+        return "~DELETED~";
     else
         return node0->value;
 }

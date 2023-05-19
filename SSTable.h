@@ -34,12 +34,15 @@ struct Header
     }
 };
 
+
+/**
+ * offset: 某一个字符串到data area区域起始位置的偏移量
+ * */
 struct IndexData
 {
     uint64_t key;
     uint32_t offset;
-    IndexData(uint64_t key, uint32_t offset)
-    {
+    IndexData(uint64_t key, uint32_t offset) {
         this->key = key;
         this->offset = offset;
     }

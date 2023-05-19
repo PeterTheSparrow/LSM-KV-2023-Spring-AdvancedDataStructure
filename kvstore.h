@@ -16,7 +16,6 @@ public:
     Header *header;
     BloomFilter *bloomFilter;
     IndexArea *indexArea;
-    // 文件名其实是路径！
     std::string fileRoutine;
     uint64_t timeStamp = 0;
 
@@ -29,7 +28,6 @@ public:
 
 class KVStore : public KVStoreAPI
 {
-    // You can add your implementation here
 private:
     MemTable * memTable0 = nullptr;
     uint64_t currentTimestamp = 0;
@@ -37,15 +35,14 @@ private:
     uint64_t currentLevel = 0;
     std::vector<std::string> levelDir;
 
-    // TODO cache的实现，可以直接在这里放一个vector，里面存放cache
+    // cache
     std::vector<std::vector<SSTableCache*>> theCache;
 
-    // TAG 适应不同的缓存策略：缓存里面存什么——其实这个在于查找，我存可以都存，测试不同的缓存策略的时候只需要修改查找的算法就可以了。
 
 public:
     KVStore(const std::string &dir);
 
-    /* INFO 系统在正常关闭时（可以实现在析构函数里面），应将 MemTable 中的所有数据以 SSTable 形式写回（类似于 MemTable 满了时的操作）。*/
+    /* 系统在正常关闭时（可以实现在析构函数里面），应将 MemTable 中的所有数据以 SSTable 形式写回（类似于 MemTable 满了时的操作）。*/
     ~KVStore();
 
     void put(uint64_t key, const std::string &s) override;

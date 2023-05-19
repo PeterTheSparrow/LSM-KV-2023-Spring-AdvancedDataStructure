@@ -260,7 +260,7 @@ void SkipList::insertNode(uint64_t keyToSearch, std::string valueToReplace) {
     //开始查找。直到降到第一层为止（必须降到第一层，因为只有第一层存放了value
     while(index > 1)
     {
-        //在每一行里面，下一个节点不是哨兵，下一个节点的值比目标key大，一直在当前行中往下
+        //在每一行里面，下一个节点不是哨兵，下一个节点的值比目标key小，一直在当前行中往下
         while(!movingNode->successorNode->isGuard && movingNode->successorNode->key < keyToSearch)
         {
             movingNode = movingNode->successorNode;
@@ -288,7 +288,7 @@ void SkipList::insertNode(uint64_t keyToSearch, std::string valueToReplace) {
         int towerLevel = this->coinFlipper();
 
         SkipNode ** newTower = new SkipNode * [towerLevel + 1];
-        //initial of tower
+        //initial of tower（把塔的上下层连接起来）
         for(int j = 0; j <= towerLevel; j++)
         {
             newTower[j] = new SkipNode;
