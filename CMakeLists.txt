@@ -12,13 +12,14 @@ set(CMAKE_CXX_STANDARD 14)
 #        SSTable.cpp SSTable.h
 #        BloomFilter.h)
 
-include_directories(LSM_clion)
 
 add_executable(
+        LSM_clion
         MurMurHash3.h
         BloomFilter.h
         correctness.cc
         kvstore.cpp kvstore.h kvstore_api.h
         Memtable.cpp Memtable.h
         SkipList.h SkipList.cpp
-        SSTable.cpp SSTable.h test.h utils.h)
+        SSTable.cpp SSTable.h test.h utils.h
+)

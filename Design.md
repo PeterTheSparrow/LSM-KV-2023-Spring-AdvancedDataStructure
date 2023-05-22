@@ -31,3 +31,116 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
     }
 ```
 
+-------------------------------------------------------------------
+
+之前已经完成除了compact之外的操作。
+现在完整捋一遍compact的过程，然后开始写compact。
+
+相关的函数：
+```c++
+/**
+ * 遍历整个data目录，检测每一层是否需要归并
+ */
+void checkCompaction()
+{
+    // 遍历，检查每一层是否需要归并
+    for(int i = 0; i < max_level; i++)
+    {
+        if(cache.element > XXX)
+        {
+            compactSingleLevel(i);
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+/**
+ * 归并某一层
+ * （1）问题：时间戳相等的文件
+ * （2）如何调整cache的信息
+ * （3）层数到达最大层，往下添一层
+ */
+void compactSingleLevel(int levelIndex)
+{
+    // level0: tiering
+    /*
+     * （1）选择所有文件
+     * （2）统计最大key和最小key，对于下一层：选择所有重复文件
+     * 
+     * （1）将选中的sstable读取到内存，归并，重新进行划分*/
+    if(levelIndex == 0)
+    {
+        // 选择第一层的所有文件
+        // 根据缓存中的内容，读文件
+        int number = number_in_level0;
+        std::vector<SSTable * > tableList;
+        for(int i = 0; i < number; i++)
+        {
+            SSTable * newTable = new SSTable;
+            tableList.push_back(newTable);
+            // 初始化SSTable
+            newTable->...
+            ...
+            // 获得最大最小元素
+            ...
+        }
+        
+    }
+    
+    // other: leveling
+    /*
+     * （1）选择时间戳最小的若干文件
+     * （2）统计最大key和最小key，对于下一层：选择所有重复文件
+     * 
+     * （1）将选中的sstable读取到内存，归并，重新进行划分*/
+    
+}
+```
+
+问题：
+（1）需要全部修改：可能存在时间戳重名的文件
+./data/level-0/100-1.sst
+在后面加上后缀
+
+
+-----------------------------------------------------------
+compact要做的事情
+1. 写函数：
+   1. 读文件，形成缓存  ok
+   2. for loop检查每一层是否需要递归 ok
+   3. 归并某个特定的层
+   4. 修改：生成文件的文件名
+      1. 从磁盘中读取文件的时候 【这个其实好像没有必要了，文件名都是存在缓存里面了】
+      2. convertMemTableToDiskFile()    ok
+      3. convertMemTableToDiskFileWithoutCache() ok
+   5. 修改：findInDisk，需要遍历所有文件夹 ok
+
+
+```c++
+void compactSingleLevel()
+{
+
+}
+
+
+```
+
+（2）修改文件名：出现重名的情况
+
+对所有文件重新命名：
+初始状态就是XXX-0.sst
+
+--------------------------------
+TODO
+1. 把生成的巨大的sstable进行切割
+   SSTable里面写一个函数
+```c++
+static cut
+```
+2. 切割完了，写回硬盘
+3. 同时，也需要写回缓存（在这之前，需要清除以前的缓存）
+清除缓存：erase
+4. 还要删除原本磁盘中的SSTable文件！！！（想一想这个应该在哪里实现）

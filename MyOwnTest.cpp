@@ -7,6 +7,7 @@
 #include "BloomFilter.h"
 #include <fstream>
 #include "SSTable.h"
+#include <algorithm>
 
 #define MAX_MEMTABLE_SIZE 2 * 1024 * 1024
 
@@ -236,7 +237,7 @@ public:
 
         // 把buffer写入文件
         std::ofstream fout(fileName, std::ios::out | std::ios::binary);
-        fout.write((char *)buffer, offset_from_data_begin + 10240 + 32 + 12 * allKVPairs.size()); // TODO 这里写的时候把完整的长度都写进去了
+        fout.write((char *)buffer, offset_from_data_begin + 10240 + 32 + 12 * allKVPairs.size()); // TAG 这里写的时候把完整的长度都写进去了
         fout.close();
 
         delete[] buffer;
@@ -259,13 +260,62 @@ public:
 
 };
 
+void splitStringTest()
+{
+    std::string fileName = "142857-10086.sst";
+    std::vector<std::string> splitStrings;
+    std::istringstream iss(fileName);
+    std::string token;
+
+    // split the fileName by '-'
+    while(std::getline(iss,token,'-'))
+    {
+        splitStrings.push_back(token);
+    }
+
+    std::string subString = splitStrings[1];
+    subString = subString.substr(0, subString.length() - 4);
+
+    std::cout << "timeStamp:" << splitStrings[0] << " " << subString;
+}
+
+class testNode{
+public:
+    int a;
+    int b;
+    testNode(int a, int b):a(a),b(b){}
+    static bool compare(testNode &a, testNode &b)
+    {
+        return a.a > b.a;
+    }
+};
+
+void testVectorSort()
+{
+    std::vector<testNode> testVector;
+    testVector.push_back(testNode(768, 2));
+    testVector.push_back(testNode(256, 3));
+    testVector.push_back(testNode(344, 4));
+    testVector.push_back(testNode(423, 5));
+
+    std::sort(testVector.begin(), testVector.end(), testNode::compare);
+
+    for(int i = 0; i < testVector.size(); i++)
+    {
+        std::cout << testVector[i].a << " " << testVector[i].b << std::endl;
+    }
+}
+
 int main()
 {
 //    testSkipList();
 //    testFileReadWrite();
 //    testMemoryLeaking();
 //    anotherTestForSkipList();
-    CheckClass * checkClass = new CheckClass();
-    checkClass->addToMemTableUntilExplode();
+//    CheckClass * checkClass = new CheckClass();
+//    checkClass->addToMemTableUntilExplode();
+//    splitStringTest();
+    testVectorSort();
+
     return 0;
 }
