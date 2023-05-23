@@ -134,6 +134,7 @@ std::string KVStore::get(uint64_t key)
     // 遍历所有文件缓存
     // TAG 对啊！我遍历文件缓存的时候直接所有都遍历一遍就行了！不用管是第几层的吧，然后对应找文件名就可以（毕竟访问内存里面的速度是很快的，所以不如直接遍历）
     // TAG 这里对应不同的缓存策略，我调用不同的函数
+//    std::cout << "search in disk" << std::endl;
     bool doFind = findInDisk1(answer, key);
     // bool doFind = findInDisk2(answer, key);
     // bool doFind = findInDisk3(answer, key);
@@ -329,8 +330,8 @@ void KVStore::convertMemTableIntoMemory()
 // 不缓存，直接在文件里查找
 bool KVStore::findInDisk1(std::string & answer, uint64_t key)
 {
-    // 现在只有第0层，查找的时候就遍历文件
-    if(this->theCache.empty() ||  this->theCache[0].empty())
+    // TODO bug 这里条件有问题
+    if(this->theCache.empty())
     {
         return false;
     }
@@ -385,6 +386,9 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 // TODO 我突然想起来一件事情，就是如果删除的话，merge到最后一层，是不是就该删除了？
 void KVStore::checkCompaction()
 {
+    // TODO for debug
+    std::cout << "------------we begin a new round of check--------------------" << std::endl;
+
     int maxFileNum = LEVEL_CHANGE;
 //    int maxFileNum = INT_MAX;
 //    int levelIndex = 0;
@@ -429,13 +433,26 @@ void KVStore::checkCompaction()
         }
         maxFileNum *= LEVEL_CHANGE;
     }
+    // TODO for debug: 打印所有缓存的信息
+    std::cout << ">>>>>>------------we finish a round of check--------------------<<<<<<" << std::endl;
+    for(auto it = this->theCache.begin(); it != this->theCache.end(); it++)
+    {
+        // for debug
+        std::cout << "--[check each level]: level " << it - this->theCache.begin() << " has " << it->size() << " files" << std::endl;
+
+        // print out all file names and key info
+        for(auto it2 = it->begin(); it2 != it->end(); it2++)
+        {
+            std::cout << "file name: " << (*it2)->fileRoutine << " minKey: " << (*it2)->header->minKey << " maxKey: " << (*it2)->header->maxKey << std::endl;
+        }
+    }
 }
 
 // 归并某个特定的层
 void KVStore::compactSingleLevel(int levelNum)
 {
-//    // for debug
-//    std::cout << "---[begin func: compactSingleLevel] compact level " << levelNum << std::endl;
+    // TODO for debug
+    std::cout << "---[begin func: compactSingleLevel] compact level " << levelNum << std::endl;
 
     // 检查下一层是否存在，如果不存在直接新建一层
     std::vector<SSTable *> tablesToMerge;
@@ -444,6 +461,9 @@ void KVStore::compactSingleLevel(int levelNum)
     if(levelNum == 0)
     {
         // 选择第0层的所有文件
+        // TODO for debug
+        std::cout << "level 0" <<  " has " << this->theCache[levelNum].size() << " files" << std::endl;
+
         std::sort(theCache[0].begin(),theCache[0].end(), SSTableCache::CompareSSTableCache);
         for(auto it = this->theCache[0].begin(); it != this->theCache[0].end(); it++)
         {
@@ -466,8 +486,8 @@ void KVStore::compactSingleLevel(int levelNum)
     }
     else
     {
-//        // for debug
-//        std::cout << "level " << levelNum << " has " << this->theCache[levelNum].size() << " files" << std::endl;
+        // TODO for debug
+        std::cout << "level " << levelNum << " has " << this->theCache[levelNum].size() << " files" << std::endl;
 
         // 选择该层时间戳最小的若干文件
         int fileNum = this->theCache[levelNum].size() - (int)pow(LEVEL_CHANGE, levelNum + 1);
@@ -480,8 +500,17 @@ void KVStore::compactSingleLevel(int levelNum)
 //        // for debug
 //        std::cout << "begin loop" << std::endl;
 
+        // TODO for debug 输出本层所有文件的文件名、最大最小key
+        for(auto it = this->theCache[levelNum].begin(); it != this->theCache[levelNum].end(); it++)
+        {
+            std::cout << "--all file " << (*it)->fileRoutine << " minKey: " << (*it)->header->minKey << "  maxKey: " << (*it)->header->maxKey << std::endl;
+        }
+
         for(int i = levelSize - fileNum; i < levelSize; i++)
         {
+            // TODO for debug 输出选中的所有文件的文件名、最大最小key
+            std::cout << "----chosen file " << this->theCache[levelNum][i]->fileRoutine << " minKey: " << this->theCache[levelNum][i]->header->minKey << "  maxKey: " << this->theCache[levelNum][i]->header->maxKey << std::endl;
+
             std::string fileRoutine = this->theCache[levelNum][i]->fileRoutine;
             SSTable * theSSTable = new SSTable;
             theSSTable->convertFileToSSTable(fileRoutine);
@@ -499,6 +528,7 @@ void KVStore::compactSingleLevel(int levelNum)
 
 //            // for debug
 //            std::cout << "delete file " << fileRoutine << std::endl;
+
         }
         // 删除缓存中的文件
         this->theCache[levelNum].erase(this->theCache[levelNum].begin() + levelSize - fileNum, this->theCache[levelNum].end());
