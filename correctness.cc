@@ -29,7 +29,7 @@ private:
 		// Test multiple key-value pairs
 		std::cout << "Test multiple key-value pairs" << std::endl;
 		for (i = 0; i < max; ++i) {
-            std::cout << "--input " << i << "--"<< std::endl;
+//            std::cout << "--input " << i << "--"<< std::endl;
 			store.put(i, std::string(i+1, 's'));
 			EXPECT(std::string(i+1, 's'), store.get(i));
 		}

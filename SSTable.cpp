@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 
 
 SSTable::SSTable()
@@ -175,8 +176,8 @@ SSTable* SSTable::mergeTwoTables(SSTable *&table1, SSTable *&table2)
 // 说明：这里传入的参数已经按照时间戳从大到小排好顺序了
 void SSTable::mergeTables(std::vector<SSTable*> &tableList)
 {
-    // TODO for debug
-    std::cout << "---[begin func mergeTables]: tableList.size() = " << tableList.size() << std::endl;
+//    // for debug
+//    std::cout << "---[begin func mergeTables]: tableList.size() = " << tableList.size() << std::endl;
     // 二分法合并
     uint64_t timeStamp = tableList[0]->header->timeStamp; // 取最大的作为新的时间戳
 
@@ -187,8 +188,8 @@ void SSTable::mergeTables(std::vector<SSTable*> &tableList)
 
 void SSTable::mergeRecursively(std::vector<SSTable*> &tableList)
 {
-    // TODO for debug
-    std::cout << "  merge recursively: tableList.size() = " << tableList.size() << std::endl;
+//    // for debug
+//    std::cout << "  merge recursively: tableList.size() = " << tableList.size() << std::endl;
 
     int size = tableList.size();
     if(size == 1)
@@ -303,7 +304,7 @@ SSTableCache * SSTable::cutOutOneSSTable(int fileTag, std::string routine, int &
         currentSize -= it->value.size();
         pairsToWrite.push_back(*it);
         KVPairs.erase(it);
-        // TODO 这里我删除了循环中的it++
+        // TAG 这里我删除了循环中的it++
     }
 
     uint64_t minKey = pairsToWrite[0].key;
@@ -359,7 +360,7 @@ SSTableCache * SSTable::cutOutOneSSTable(int fileTag, std::string routine, int &
         delete newIndexData;
 
         // 把string写入数据区
-        // TODO this is buggy
+        // this is buggy
         memcpy(length_from_data_to_file_begin, pairsToWrite[i].value.c_str(), pairsToWrite[i].value.size());
 
         padding += 12;
