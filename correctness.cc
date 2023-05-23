@@ -8,7 +8,7 @@ class CorrectnessTest : public Test {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
 //	const uint64_t LARGE_TEST_MAX = 1024 * 64;
-    const uint64_t LARGE_TEST_MAX = 1024 * 6;
+    const uint64_t LARGE_TEST_MAX = 1024 * 8;
 
 	void regular_test(uint64_t max)
 	{
@@ -43,15 +43,15 @@ private:
             EXPECT(std::string(i+1, 's'), store.get(i));
         }
 
-        // TODO  for debug
-        for(int i = 0; i < max; i++)
-        {
-            std::string answer = store.get(i);
-            if(answer != std::string(i+1, 's'))
-            {
-                std::cout << "error: " << i << "   " << answer << std::endl;
-            }
-        }
+//        // for debug
+//        for(int i = 0; i < max; i++)
+//        {
+//            std::string answer = store.get(i);
+//            if(answer != std::string(i+1, 's'))
+//            {
+//                std::cout << "error: " << i << "   " << answer << std::endl;
+//            }
+//        }
 
 		phase();
 
@@ -94,7 +94,7 @@ private:
 		for (i = 0; i < max; ++i)
 			EXPECT((i & 1) ? std::string(i+1, 's') : not_found,
 			       store.get(i));
-//        // TODO for debug
+//        // for debug
 //        std::string answer = "";
 //        for (i = 0; i < max; ++i)
 //        {
