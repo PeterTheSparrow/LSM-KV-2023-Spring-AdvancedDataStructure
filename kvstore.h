@@ -5,7 +5,7 @@
 #include "SSTable.h"
 
 
-#define MAX_MEMTABLE_SIZE 2 * 1024 * 1024
+#define MAX_MEMTABLE_SIZE (2 * 1024 * 1024)
 
 #define LEVEL_CHANGE 2
 
@@ -53,15 +53,4 @@ private:
     void checkCompaction();
     // 归并某个特定的层
     void compactSingleLevel(int levelNum);
-
-    // 合并SSTable
-    SSTable * mergeSSTables(std::vector<SSTable *> tablesToMerge);
-    /* 后面将SSTable写入硬盘的函数可以设计在SSTable类里面，我们直接对于每个SSTable * ptr调用就可以了
-     * 以及SSTable的合并，本质上还是两两先开始合并，所以也可以在SSTable里面设计mergeTwoTables？
-     * 噢其实这两个函数都可以写在SSTable类里面，传进来另一张表，我把它merge到我自己身上就可以了。
-     *
-     * 关于切分SSTable，并且将它们写入硬盘（写入硬盘的函数在SSTable类里面）
-     * */
-
-    std::vector<SSTable *> splitSSTables(SSTable * tableToSplit);
 };

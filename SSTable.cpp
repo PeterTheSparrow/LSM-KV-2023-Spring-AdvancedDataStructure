@@ -14,8 +14,7 @@ SSTable::~SSTable()
     delete header;
     header = nullptr;
 
-    if(indexArea != nullptr)
-        delete indexArea;
+    delete indexArea;
     indexArea = nullptr;
 
     delete[] dataArea;
@@ -75,58 +74,58 @@ void SSTable::convertFileToSSTable(std::string routine)
         indexArea->indexDataList.push_back(IndexData(key, offset));
     }
 
-    int dataSize = fileSize - 32 - 10240 - 12 * keyValueNum;
-    this->dataSize = dataSize;
+    uint32_t dataSize0 = fileSize - 32 - 10240 - 12 * keyValueNum;
+    this->dataSize = dataSize0;
 
-    dataArea = new char[dataSize];
+    dataArea = new char[dataSize0];
 
     // 读文件读完为止
-    fin.read(dataArea, dataSize);
+    fin.read(dataArea, dataSize0);
 
     fin.close();
 
     this->formKVVector();
 }
 
-// 说明：这个查找函数已经废弃，因为现在已经将所有的信息从char * dataArea转移到了std::vector<KVNode> KVPairs中！
-bool SSTable::findInSSTableAbandoned(std::string & answer, uint64_t key)
-{
-    // 先判断key是否在范围内
-    if(key < header->minKey || key > header->maxKey)
-    {
-        return false;
-    }
-    // bloom filter
-    if(!filter->searchInFilter(key))
-    {
-        return false;
-    }
-    // index area
-    for(auto it = this->indexArea->indexDataList.begin(); it != this->indexArea->indexDataList.end(); it++)
-    {
-        if(it->key == key)
-        {
-            // data area
-            uint32_t offset = it->offset;
-            uint32_t length = 0;
-            if(it + 1 == this->indexArea->indexDataList.end())
-            {
-                // BUG 读最后一个文件的时候会不会出问题？
-                length = this->dataSize - offset;
-            }
-            else
-            {
-                length = (it + 1)->offset - offset;
-            }
-            answer = std::string(this->dataArea + offset, length);
-//            if(answer == "~DELETED~")
+//// 说明：这个查找函数已经废弃，因为现在已经将所有的信息从char * dataArea转移到了std::vector<KVNode> KVPairs中！
+//bool SSTable::findInSSTableAbandoned(std::string & answer, uint64_t key)
+//{
+//    // 先判断key是否在范围内
+//    if(key < header->minKey || key > header->maxKey)
+//    {
+//        return false;
+//    }
+//    // bloom filter
+//    if(!filter->searchInFilter(key))
+//    {
+//        return false;
+//    }
+//    // index area
+//    for(auto it = this->indexArea->indexDataList.begin(); it != this->indexArea->indexDataList.end(); it++)
+//    {
+//        if(it->key == key)
+//        {
+//            // data area
+//            uint32_t offset = it->offset;
+//            uint32_t length = 0;
+//            if(it + 1 == this->indexArea->indexDataList.end())
 //            {
-//                return false;
+//                // BUG 读最后一个文件的时候会不会出问题？
+//                length = this->dataSize - offset;
 //            }
-            return true;
-        }
-    }
-}
+//            else
+//            {
+//                length = (it + 1)->offset - offset;
+//            }
+//            answer = std::string(this->dataArea + offset, length);
+////            if(answer == "~DELETED~")
+////            {
+////                return false;
+////            }
+//            return true;
+//        }
+//    }
+//}
 
 // 这里默认传入的参数，table1的时间戳比table2的时间戳大
 // 其实这里更新header没有意义，因为后面都要全部merge再重塑的，但是唯一有意义的是时间戳，要用最大的时间戳
@@ -171,83 +170,26 @@ SSTable* SSTable::mergeTwoTables(SSTable *&table1, SSTable *&table2)
         }
     }
     return newTable;
-    // 至于原来两个vector怎么处理，得看怎么调用本函数（并不用处理）
-//    SSTable newTable;
-//    int index1 = 0;
-//    int index2 = 0;
-//    int size1 = table1.KVPairs.size();
-//    int size2 = table2.KVPairs.size();
-//    while(index1 < size1 && index2 < size2)
-//    {
-//        if(table1.KVPairs[index1].key < table2.KVPairs[index2].key)
-//        {
-//            newTable.KVPairs.push_back(table1.KVPairs[index1]);
-//            index1++;
-//        }
-//        else if(table1.KVPairs[index1].key > table2.KVPairs[index2].key)
-//        {
-//            newTable.KVPairs.push_back(table2.KVPairs[index2]);
-//            index2++;
-//        }
-//        else
-//        {
-//            newTable.KVPairs.push_back(table1.KVPairs[index1]);
-//            index1++;
-//            index2++;
-//        }
-//    }
-//    if(index1 == size1)
-//    {
-//        for(int i = index2; i < size2; i++)
-//        {
-//            newTable.KVPairs.push_back(table2.KVPairs[i]);
-//        }
-//    }
-//    else
-//    {
-//        for(int i = index1; i < size1; i++)
-//        {
-//            newTable.KVPairs.push_back(table1.KVPairs[i]);
-//        }
-//    }
-//    return newTable;
 }
 
 // 说明：这里传入的参数已经按照时间戳从大到小排好顺序了
 void SSTable::mergeTables(std::vector<SSTable*> &tableList)
-//void SSTable::mergeTables(std::vector<SSTable> &tableList)
 {
+    // TODO for debug
+    std::cout << "---[begin func mergeTables]: tableList.size() = " << tableList.size() << std::endl;
     // 二分法合并
     uint64_t timeStamp = tableList[0]->header->timeStamp; // 取最大的作为新的时间戳
 
     SSTable::mergeRecursively(tableList);
     tableList[0]->header = new Header;
     tableList[0]->header->timeStamp = timeStamp;
-//    uint64_t timeStamp = tableList[0].header->timeStamp; // 取最大的作为新的时间戳
-//
-//    SSTable::mergeRecursively(tableList);
-//    tableList[0].header->timeStamp = timeStamp;
 }
 
 void SSTable::mergeRecursively(std::vector<SSTable*> &tableList)
 {
-//    int size = tableList.size();
-//    if(size == 1)
-//    {
-//        return;
-//    }
-//    std::vector<SSTable> nextRound;
-//    for(int i = 0; i < size / 2; i++)
-//    {
-//        nextRound.push_back(mergeTwoTables(tableList[2*i],tableList[2*i+1]));
-//    }
-//    if(size % 2 == 1)
-//    {
-//        nextRound.push_back(tableList[size-1]);
-//    }
-//    // 清除
-//    mergeRecursively(nextRound);
-//    tableList = nextRound;
+    // TODO for debug
+    std::cout << "  merge recursively: tableList.size() = " << tableList.size() << std::endl;
+
     int size = tableList.size();
     if(size == 1)
     {
@@ -329,17 +271,6 @@ std::vector<SSTableCache *> SSTable::splitAndSave(std::string routine) {
     // 每次都切出来一张新的表
     while(currentSize > 0)
     {
-//        if(currentSize > MAX_SSTABLE_SIZE)
-//        {
-//            SSTableCache *newTable = cutOutOneSSTable(fileTag, routine, currentSize);
-//            newCache.push_back(newTable);
-//            fileTag++;
-//        }
-//        else
-//        {
-//            SSTableCache *newTable = formLastSSTable(fileTag, routine, currentSize);
-//            newCache.push_back(newTable);
-//        }
         // 这里没有必要分开，直接切就可以了
         SSTableCache *newTable = cutOutOneSSTable(fileTag, routine, currentSize);
         newCache.push_back(newTable);
@@ -357,14 +288,14 @@ SSTableCache * SSTable::cutOutOneSSTable(int fileTag, std::string routine, int &
 
     // 参考函数:KVStore::convertMemTableIntoMemory
     const std::string dir = routine + "/" + std::to_string(this->header->timeStamp) + "-" + std::to_string(fileTag) + ".sst";
-    char * buffer = new char[MAX_SSTABLE_SIZE];
+    char * buffer = new char[MAX_TABLE_SIZE];
 
     // 计算要写入的数据
-    int size = 32 + 10240;
+    uint32_t size = 32 + 10240;
     std::vector<KVNode> pairsToWrite;
     for(auto it = this->KVPairs.begin(); it != this->KVPairs.end();)
     {
-        if(size + it->value.size() + 12 > MAX_SSTABLE_SIZE)
+        if(size + it->value.size() + 12 > MAX_TABLE_SIZE)
         {
             break;
         }
@@ -375,8 +306,8 @@ SSTableCache * SSTable::cutOutOneSSTable(int fileTag, std::string routine, int &
         // TODO 这里我删除了循环中的it++
     }
 
-    int minKey = pairsToWrite[0].key;
-    int maxKey = pairsToWrite[pairsToWrite.size() - 1].key;
+    uint64_t minKey = pairsToWrite[0].key;
+    uint64_t maxKey = pairsToWrite[pairsToWrite.size() - 1].key;
 
     // Header, BloomFilter, IndexArea, DataArea
     // Header
@@ -413,7 +344,7 @@ SSTableCache * SSTable::cutOutOneSSTable(int fileTag, std::string routine, int &
 
     char * length_from_data_to_file_begin = (10240 + 32 + 12 * pairsToWrite.size() + buffer);
     // for debug
-    int length_from_data_to_file_begin_int = (10240 + 32 + 12 * pairsToWrite.size());
+    uint32_t length_from_data_to_file_begin_int = (10240 + 32 + 12 * pairsToWrite.size());
     uint32_t offset_from_data_begin = 0;
 
     for(int i = 0; i < pairsToWrite.size(); i++)
@@ -451,10 +382,6 @@ SSTableCache * SSTable::cutOutOneSSTable(int fileTag, std::string routine, int &
     return newCache;
 }
 
-//SSTableCache *SSTable::formLastSSTable(int fileTag, std::string routine, int &currentSize) {
-//    return nullptr;
-//}
-
 SSTableCache::SSTableCache()
 {
     header = new Header;
@@ -472,6 +399,16 @@ SSTableCache::~SSTableCache()
 
     delete indexArea;
     indexArea = nullptr;
+}
+
+void SSTableCache::setAllData(uint64_t minKey, uint64_t maxKey, uint64_t numberOfPairs, uint64_t timeStamp, std::string fileName, uint64_t currentTime)
+{
+    this->header = new Header;
+    this->header->setAllDataInHeader(timeStamp, numberOfPairs, minKey, maxKey);
+    this->fileRoutine = fileName;
+    bloomFilter = new BloomFilter;
+    indexArea = new IndexArea;
+//    this->timeStamp = currentTime;
 }
 
 
@@ -492,7 +429,6 @@ void SSTableCache::readFileToFormCache(std::string routine, std::string fileName
     std::string subString = splitStrings[1];
     subString = subString.substr(0, subString.length() - 4);
 
-    theTimeStamp = std::stoi(splitStrings[0]);
     theTimeStampIndex = std::stoi(subString);
 
     // 初始化信息

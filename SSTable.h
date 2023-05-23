@@ -4,7 +4,7 @@
 #include <string>
 #include <vector> // 数据区存放string用
 
-# define MAX_SSTABLE_SIZE 2 * 1024 * 1024
+# define MAX_TABLE_SIZE (2 * 1024 * 1024)
 
 /**
  * 32字节的header，包括：
@@ -48,13 +48,13 @@ struct IndexData
         this->key = key;
         this->offset = offset;
     }
-    ~IndexData() {}
+    ~IndexData() = default;
 };
 
 struct IndexArea
 {
     std::vector<IndexData> indexDataList;
-    IndexArea() {}
+    IndexArea() = default;
     ~IndexArea()
     {
         indexDataList.clear();
@@ -114,7 +114,7 @@ public:
     IndexArea *indexArea = nullptr;
     char *dataArea = nullptr;
 
-    int dataSize = 0;
+    uint32_t dataSize = 0;
 
     // 用于合并SSTable的时候用（因为如果是char来存储数据的话，没有办法merge）
     std::vector<KVNode> KVPairs;
@@ -126,8 +126,8 @@ public:
 
     bool findInSSTable(std::string &answer, uint64_t key);
 
-    // 说明：本查找函数现已废弃，因为现在已经将所有的信息从char * dataArea转移到了std::vector<KVNode> KVPairs中！
-    bool findInSSTableAbandoned(std::string &answer, uint64_t key);
+//    // 说明：本查找函数现已废弃，因为现在已经将所有的信息从char * dataArea转移到了std::vector<KVNode> KVPairs中！
+//    bool findInSSTableAbandoned(std::string &answer, uint64_t key);
 
     // 读取所有char中的信息，生成键值对的vector，加速查找
     void formKVVector();
