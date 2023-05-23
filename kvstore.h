@@ -9,23 +9,6 @@
 
 #define LEVEL_CHANGE 2
 
-//class SSTableCache
-//{
-//public:
-//    Header *header;
-//    BloomFilter *bloomFilter;
-//    IndexArea *indexArea;
-//    std::string fileRoutine;
-//    uint64_t timeStampIndex = 0; // 由于可能存在时间戳相同的文件，因此需要用index将其区分
-//
-//
-//    SSTableCache();
-//    void setAllData(uint64_t minKey, uint64_t maxKey, uint64_t numberOfPairs, uint64_t timeStamp, std::string fileName, uint64_t currentTime);
-//    ~SSTableCache();
-//    void readFileToFormCache(std::string routine, std::string fileName);
-//};
-
-
 class KVStore : public KVStoreAPI
 {
 private:

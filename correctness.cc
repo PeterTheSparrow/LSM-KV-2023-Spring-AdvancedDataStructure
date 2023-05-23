@@ -37,7 +37,11 @@ private:
 		// Test after all insertions
 		std::cout << "Test after all insertions" << std::endl;
 		for (i = 0; i < max; ++i)
-			EXPECT(std::string(i+1, 's'), store.get(i));
+        {
+//            std::cout <<" we begin " << i << std::endl;
+            EXPECT(std::string(i+1, 's'), store.get(i));
+        }
+
 		phase();
 
 		// // Test scan
@@ -79,26 +83,26 @@ private:
 		for (i = 0; i < max; ++i)
 			EXPECT((i & 1) ? std::string(i+1, 's') : not_found,
 			       store.get(i));
-        // for debug
-        std::string answer = "";
-        for (i = 0; i < max; ++i)
-        {
-            if(i % 2 == 0)
-            {
-                answer = store.get(i);
-                if(answer != "")
-                {
-                    std::cout << "wrong i = " << i << "answer = " << answer << std::endl;
-                }
-            }
-            else
-            {
-                if(store.get(i) != std::string(i+1, 's'))
-                {
-                    std::cout << "incorrect i = " << i << std::endl;
-                }
-            }
-        }
+//        // for debug
+//        std::string answer = "";
+//        for (i = 0; i < max; ++i)
+//        {
+//            if(i % 2 == 0)
+//            {
+//                answer = store.get(i);
+//                if(answer != "")
+//                {
+//                    std::cout << "wrong i = " << i << "answer = " << answer << std::endl;
+//                }
+//            }
+//            else
+//            {
+//                if(store.get(i) != std::string(i+1, 's'))
+//                {
+//                    std::cout << "incorrect i = " << i << std::endl;
+//                }
+//            }
+//        }
 
 		for (i = 1; i < max; ++i)
 			EXPECT(i & 1, store.del(i));

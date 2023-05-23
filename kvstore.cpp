@@ -41,7 +41,7 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
                 for(int j = 0; j < fileNumbers; j++)
                 {
                     SSTableCache * newCache = new SSTableCache;
-                    // TODO 实现读取磁盘来生成缓存信息
+                    // 实现读取磁盘来生成缓存信息
                     newCache->readFileToFormCache(routine + fileNames[j], fileNames[j]);
                     this->theCache[i].push_back(newCache);
                     // 更新时间戳
@@ -52,6 +52,7 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
                 }
                 // TODO 把该层的cache文件按照时间戳排序
                 // 因为我们merge的时候，需要把时间戳最小的文件拿出来merge
+                std::sort(this->theCache[i].begin(), this->theCache[i].end(), SSTableCache::CompareSSTableCache);
             }
         }
     }
@@ -134,7 +135,7 @@ std::string KVStore::get(uint64_t key)
     }
 
 
-    // TODO 实现存储的部分——读文件，把文件读到内存中，转化为SSTable，然后查找
+    // 实现存储的部分——读文件，把文件读到内存中，转化为SSTable，然后查找
     // 遍历所有文件缓存
     // TAG 对啊！我遍历文件缓存的时候直接所有都遍历一遍就行了！不用管是第几层的吧，然后对应找文件名就可以（毕竟访问内存里面的速度是很快的，所以不如直接遍历）
     // TAG 这里对应不同的缓存策略，我调用不同的函数
@@ -397,10 +398,12 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 }
 
 // 遍历缓存，查看每一层是否需要merge
+// TODO 我突然想起来一件事情，就是如果删除的话，merge到最后一层，是不是就该删除了？
 void KVStore::checkCompaction()
 {
     int maxFileNum = LEVEL_CHANGE;
-    int levelIndex = 1;
+//    int maxFileNum = INT_MAX;
+    int levelIndex = 0;
     for(auto it = this->theCache.begin(); it != this->theCache.end(); it++)
     {
         if(it->size() > maxFileNum)
@@ -421,15 +424,15 @@ void KVStore::checkCompaction()
 void KVStore::compactSingleLevel(int levelNum)
 {
     // 检查下一层是否存在，如果不存在直接新建一层
-    std::vector<SSTable> tablesToMerge;
-    int minKeyInAll = INT_MAX, maxKeyInAll = INT_MIN;
-
-    // TODO 记得把缓存里面这些选出来的东西都给删了
-    // 应该用erase就可以了
+//    std::vector<SSTable> tablesToMerge;
+    std::vector<SSTable *> tablesToMerge;
+    uint64_t minKeyInAll = UINT64_MAX, maxKeyInAll = 0;
 
     if(levelNum == 0)
     {
         // 选择第0层的所有文件
+        // sort
+        std::sort(theCache[0].begin(),theCache[0].end(), SSTableCache::CompareSSTableCache);
         for(auto it = this->theCache[0].begin(); it != this->theCache[0].end(); it++)
         {
             std::string fileRoutine = (*it)->fileRoutine;
@@ -443,24 +446,22 @@ void KVStore::compactSingleLevel(int levelNum)
             {
                 maxKeyInAll = theSSTable->header->maxKey;
             }
-            tablesToMerge.push_back(*theSSTable);
-            // 把cache里的东西删了
-            theCache[0].erase(it);
-            // 删除磁盘中原来的文件
+//            tablesToMerge.push_back(*theSSTable);
+            tablesToMerge.push_back(theSSTable);
+            // 这里erase会出错，因为erase之后it就失效了
+//            theCache[0].erase(it);
             utils::rmfile(fileRoutine.c_str());
-            delete theSSTable;
+//            delete theSSTable;
         }
+        // 清除第0层的所有文件
+        this->theCache[0].erase(this->theCache[0].begin(), this->theCache[0].end());
     }
     else
     {
         // 选择该层时间戳最小的若干文件
         int fileNum = this->theCache[levelNum].size() - (int)pow(LEVEL_CHANGE, levelNum + 1);
-        // TODO 其实这里不一定有必要sort，但是还是sort一下；如果每次我们修改缓存都是按照时间戳排列的话，这里就没有必要sort了
+        // 其实这里不一定有必要sort，但是还是sort一下；如果每次我们修改缓存都是按照时间戳排列的话，这里就没有必要sort了
         // 把时间戳从大到小排，选择最后的fileNum个文件
-//        std::sort(this->theCache[levelNum].begin(), this->theCache[levelNum].end(), [](SSTableCache * a, SSTableCache * b){
-//            return a->header->timeStamp > b->header->timeStamp;
-//        });
-        // 上面这段lambda在我把缓存的数据结构移出去新建了一个头文件以后就没有办法使用了，我觉得很疑惑
         std::sort(this->theCache[levelNum].begin(), this->theCache[levelNum].end(), SSTableCache::CompareSSTableCache);
 
         int levelSize = this->theCache[levelNum].size();
@@ -477,40 +478,40 @@ void KVStore::compactSingleLevel(int levelNum)
             {
                 maxKeyInAll = theSSTable->header->maxKey;
             }
-            tablesToMerge.push_back(*theSSTable);
-            // 把cache里的东西删了
-            this->theCache[levelNum].erase(this->theCache[levelNum].begin() + i);
-            // TODO 这里有可能会出问题，因为erase之后，后面的元素会往前移动，所以i也要减一？？
+//            tablesToMerge.push_back(*theSSTable);
+            tablesToMerge.push_back(theSSTable);
+//            // 把cache里的东西删了
+//            this->theCache[levelNum].erase(this->theCache[levelNum].begin() + i);
+//            // TODO 这里有可能会出问题，因为erase之后，后面的元素会往前移动，所以i也要减一？？
             // 删除磁盘中的文件
             utils::rmfile(fileRoutine.c_str());
-            delete theSSTable;
+//            delete theSSTable;
         }
+        // 删除缓存中的文件
+        this->theCache[levelNum].erase(this->theCache[levelNum].begin() + levelSize - fileNum, this->theCache[levelNum].end());
     }
     levelNum += 1;
     if(levelNum < theCache.size())
     {
         // 在下一层中选择所有数据范围和min与max之间有交集的文件
-        for(auto it = this->theCache[levelNum].begin(); it != this->theCache[levelNum].end(); it++)
+        for(auto it = this->theCache[levelNum].begin(); it != this->theCache[levelNum].end();)
         {
-//            std::string fileRoutine = (*it)->fileRoutine;
-//            SSTable * theSSTable = new SSTable;
-//            theSSTable->convertFileToSSTable(fileRoutine);
-//            // 检查数据范围
-//            if(theSSTable->header->minKey <= maxKeyInAll && theSSTable->header->maxKey >= minKeyInAll)
-//            {
-//                tablesToMerge.push_back(*theSSTable);
-//            }
-//            delete theSSTable;
             // 其实这里检查数据范围的交集在缓存就能做，如果有交集再读文件，时间上可以好很多
             if((*it)->header->minKey <= maxKeyInAll && (*it)->header->maxKey >= minKeyInAll)
             {
                 std::string fileRoutine = (*it)->fileRoutine;
                 SSTable * theSSTable = new SSTable;
                 theSSTable->convertFileToSSTable(fileRoutine);
-                tablesToMerge.push_back(*theSSTable);
+//                tablesToMerge.push_back(*theSSTable);
+                tablesToMerge.push_back(theSSTable);
                 // 把cache里的东西删了
+                // TODO 这里直接erase会出错，因为erase之后it就失效了
                 this->theCache[levelNum].erase(it);
-                delete theSSTable;
+//                delete theSSTable;
+            }
+            else
+            {
+                it++;
             }
         }
     }
@@ -518,15 +519,16 @@ void KVStore::compactSingleLevel(int levelNum)
     {
         // 新增一层
         utils::mkdir((this->dataStoreDir + "/level-" + std::to_string(levelNum)).c_str());
-        this->theCache.push_back(std::vector<SSTableCache*>());
+        std::vector<SSTableCache *> newFloor;
+        this->theCache.push_back(newFloor);
     }
 
     // 将这些SSTable文件merge，扔到下一层
     SSTable::mergeTables(tablesToMerge);
 
     // 切割获得的新SSTable，将里面的东西保存到磁盘中，同时返回新生成的缓存的std::vector
-    std::vector<SSTableCache*> newCache = tablesToMerge[0].splitAndSave(this->dataStoreDir + "/level-" + std::to_string(levelNum));
-
+//    std::vector<SSTableCache*> newCache = tablesToMerge[0].splitAndSave(this->dataStoreDir + "/level-" + std::to_string(levelNum));
+    std::vector<SSTableCache*> newCache = tablesToMerge[0]->splitAndSave(this->dataStoreDir + "/level-" + std::to_string(levelNum));
     // 把获得的新SSTableCache加入到缓存中，同时将该层的缓存按照时间戳从大到小重新排序
     for(auto it = newCache.begin(); it != newCache.end(); it++)
     {
@@ -603,85 +605,3 @@ void KVStore::convertMemTableIntoMemoryWithoutCache() {
     delete[] buffer;
     delete bloomFilter;
 }
-
-//SSTableCache::SSTableCache()
-//{
-//    header = new Header;
-//    bloomFilter = new BloomFilter;
-//    indexArea = nullptr;
-//}
-//
-//SSTableCache::~SSTableCache()
-//{
-//    delete header;
-//    header = nullptr;
-//
-//    delete bloomFilter;
-//    bloomFilter = nullptr;
-//
-//    delete indexArea;
-//    indexArea = nullptr;
-//}
-//
-//
-//void SSTableCache::readFileToFormCache(std::string routine, std::string fileName)
-//{
-//    // 解析文件名，获得timeStampIndex
-//    int theTimeStamp, theTimeStampIndex;
-//    std::vector<std::string> splitStrings;
-//    std::istringstream iss(fileName);
-//    std::string token;
-//
-//    // split the fileNAme by '-'
-//    while(std::getline(iss,token,'-'))
-//    {
-//        splitStrings.push_back(token);
-//    }
-//
-//    std::string subString = splitStrings[1];
-//    subString = subString.substr(0, subString.length() - 4);
-//
-//    theTimeStamp = std::stoi(splitStrings[0]);
-//    theTimeStampIndex = std::stoi(subString);
-//
-//    // 初始化信息
-//    this->timeStampIndex = theTimeStampIndex;
-//    this->fileRoutine = routine;
-//
-//    // open the file and read to form the whole cache
-//    std::ifstream  fin(routine, std::ios::in | std::ios::binary);
-//    if(!fin.is_open())
-//    {
-//        std::cout << "open file error" << std::endl;
-//        return;
-//    }
-//
-//    // read file
-//    uint64_t timeStamp;
-//    uint64_t kvNum;
-//    uint64_t minKey;
-//    uint64_t maxKey;
-//
-//    fin.read((char *)&timeStamp, sizeof(uint64_t));
-//    fin.read((char *)&kvNum, sizeof(uint64_t));
-//    fin.read((char *)&minKey, sizeof(uint64_t));
-//    fin.read((char *)&maxKey, sizeof(uint64_t));
-//
-//    this->header->setAllDataInHeader(timeStamp, kvNum, minKey, maxKey);
-//
-//    // read bloom filter
-//    fin.read((char *)this->bloomFilter->checkBits, sizeof(char) * 10240);
-//
-//    // read index area
-//    this->indexArea = new IndexArea;
-//    for(int i = 0; i < kvNum; i++)
-//    {
-//        uint64_t key;
-//        uint32_t offset;
-//        fin.read((char *)&key, sizeof(uint64_t));
-//        fin.read((char *)&offset, sizeof(uint32_t));
-//        this->indexArea->indexDataList.push_back(IndexData(key,offset));
-//    }
-//
-//    fin.close();
-//}
