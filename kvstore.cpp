@@ -135,9 +135,9 @@ std::string KVStore::get(uint64_t key)
     // TAG 对啊！我遍历文件缓存的时候直接所有都遍历一遍就行了！不用管是第几层的吧，然后对应找文件名就可以（毕竟访问内存里面的速度是很快的，所以不如直接遍历）
     // TAG 这里对应不同的缓存策略，我调用不同的函数
 //    std::cout << "search in disk" << std::endl;
-    bool doFind = findInDisk1(answer, key);
-    // bool doFind = findInDisk2(answer, key);
-    // bool doFind = findInDisk3(answer, key);
+//    bool doFind = findInDisk1(answer, key);
+//    bool doFind = findInDisk2(answer, key);
+     bool doFind = findInDisk3(answer, key);
     if(doFind)
     {
         return answer;
@@ -232,6 +232,10 @@ void KVStore::scan(uint64_t key1, uint64_t key2, std::list<std::pair<uint64_t, s
 {
 }
 
+/**
+ * 在跳表满了之后，将跳表中的数据转化为SSTable并存储在磁盘中；
+ * 同时为这张SSTable生成对应的缓存，存储在Cache Vector中。
+ * */
 void KVStore::convertMemTableIntoMemory()
 {
     // 将MemTable的东西写入磁盘
@@ -283,10 +287,11 @@ void KVStore::convertMemTableIntoMemory()
         *(uint64_t *)(indexStart + padding) = allKVPairs[i].first;
         *(uint32_t *)(indexStart + padding + 8) = offset_from_data_begin;
 
-        // TAG 写入缓存
+
         struct IndexData *newIndexData = new IndexData(allKVPairs[i].first, offset_from_data_begin);
         newCache->indexArea->indexDataList.push_back(*newIndexData);
         delete newIndexData;
+//        newCache->indexArea->indexDataList.push_back(IndexData(allKVPairs[i].first, offset_from_data_begin));
 
         // 把string写入数据区
         memcpy(length_from_data_to_file_begin, allKVPairs[i].second.c_str(), allKVPairs[i].second.size());
@@ -328,6 +333,7 @@ void KVStore::convertMemTableIntoMemory()
 
 
 // 不缓存，直接在文件里查找
+// TODO 未检查内存泄漏
 bool KVStore::findInDisk1(std::string & answer, uint64_t key)
 {
     // TODO bug 这里条件有问题
@@ -371,14 +377,85 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
 }
 
 // 缓存index，使用binary search
+// this is buggy!! 实现+检测内存泄漏
 bool KVStore::findInDisk2(std::string & answer, uint64_t key)
 {
+    // 遍历缓存，在缓存中搜索，如果搜索到了，直接查询对应的文件即可
+    for(auto it1 = this->theCache.begin(); it1 != this->theCache.end(); it1++)
+    {
+        for(auto it2 = it1->begin(); it2 != it1->end(); it2++)
+        {
+            // 先使用minKey和maxKey框一下范围
+            // 如果在范围里面，再使用二分查找
+            if(key < (*it2)->header->minKey || key > (*it2)->header->maxKey)
+            {
+                continue;
+            }
+            else
+            {
+//                // for debug
+//                std::cout << "size of indexDataList: " << (*it2)->indexArea->indexDataList.size() << std::endl;
+                // 使用二分查找
+                int left = 0;
+                int right = (*it2)->indexArea->indexDataList.size() - 1;
+                while(left <= right)
+                {
+                    int mid = (left + right) / 2;
+                    if((*it2)->indexArea->indexDataList[mid].key == key)
+                    {
+                        // 找到了，直接读取文件
+//                        // for debug
+//                        std::cout << "->we find the key in the cache!" << key << std::endl;
+                        // 事实证明确实都是0，就很惊悚
+                        std::string fileRoutine = (*it2)->fileRoutine;
+                        SSTable * theSSTable = new SSTable;
+                        theSSTable->convertFileToSSTable(fileRoutine);
+                        theSSTable->findInSSTable(answer, key);
+                        delete theSSTable;
+                        return true;
+                    }
+                    else if((*it2)->indexArea->indexDataList[mid].key < key)
+                    {
+                        left = mid + 1;
+                    }
+                    else
+                    {
+                        right = mid - 1;
+                    }
+                }
+                // 这里如果没有找到并不能直接返回，需要继续搜索完整个磁盘为止。
+            }
+        }
+    }
     return false;
 }
 
 // 缓存index和bloom filter
+// 实现+检测内存泄漏
 bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 {
+    // 遍历缓存，对于每一个缓存，用bloom filter判断是否存在，如果存在，再读文件查找，如果找到了，返回true
+    // 如果没找到，则继续搜索，直到搜索完毕所有缓存为止
+    for(auto it1 = theCache.begin(); it1 != theCache.end(); it1++)
+    {
+        for(auto it2 = it1->begin(); it2 != it1->end(); it2++)
+        {
+            // 直接用bloom filter判断是否存在
+            if((*it2)->bloomFilter->searchInFilter(key))
+            {
+                std::string fileRoutine = (*it2)->fileRoutine;
+                SSTable * theSSTable = new SSTable;
+                theSSTable->convertFileToSSTable(fileRoutine);
+                if(theSSTable->findInSSTable(answer, key))
+                {
+                    delete theSSTable;
+                    return true;
+                }
+                delete theSSTable;
+            }
+        }
+    }
+
     return false;
 }
 
@@ -390,10 +467,12 @@ void KVStore::checkCompaction()
 //    std::cout << "------------we begin a new round of check--------------------" << std::endl;
 
     int maxFileNum = LEVEL_CHANGE;
+    // // for debug 直接把第0层开到无穷大
 //    int maxFileNum = INT_MAX;
 //    int levelIndex = 0;
     int height = this->theCache.size();
     // // 这里不能直接auto，因为下面有可能新增出来一层，直接调用会出垃圾值的bug...
+    // TAG 新增的一层其实并不用检测，可以从数学的角度证明，如果你按照等比数列来递增，新增的一层永远不会爆炸
 //    for(auto it = this->theCache.begin(); it != this->theCache.end(); it++)
 //    {
 //        // for debug
@@ -435,17 +514,17 @@ void KVStore::checkCompaction()
     }
 //    // for debug: 打印所有缓存的信息
 //    std::cout << ">>>>>>------------we finish a round of check--------------------<<<<<<" << std::endl;
-    for(auto it = this->theCache.begin(); it != this->theCache.end(); it++)
-    {
-        // for debug
-        std::cout << "--[check each level]: level " << it - this->theCache.begin() << " has " << it->size() << " files" << std::endl;
-
-        // print out all file names and key info
-        for(auto it2 = it->begin(); it2 != it->end(); it2++)
-        {
-            std::cout << "file name: " << (*it2)->fileRoutine << " minKey: " << (*it2)->header->minKey << " maxKey: " << (*it2)->header->maxKey << std::endl;
-        }
-    }
+//    for(auto it = this->theCache.begin(); it != this->theCache.end(); it++)
+//    {
+//        // for debug
+//        std::cout << "--[check each level]: level " << it - this->theCache.begin() << " has " << it->size() << " files" << std::endl;
+//
+//        // print out all file names and key info
+//        for(auto it2 = it->begin(); it2 != it->end(); it2++)
+//        {
+//            std::cout << "file name: " << (*it2)->fileRoutine << " minKey: " << (*it2)->header->minKey << " maxKey: " << (*it2)->header->maxKey << std::endl;
+//        }
+//    }
 }
 
 // 归并某个特定的层

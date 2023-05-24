@@ -407,8 +407,9 @@ void SSTableCache::setAllData(uint64_t minKey, uint64_t maxKey, uint64_t numberO
     this->header = new Header;
     this->header->setAllDataInHeader(timeStamp, numberOfPairs, minKey, maxKey);
     this->fileRoutine = fileName;
-    bloomFilter = new BloomFilter;
-    indexArea = new IndexArea;
+    // fuck!!这里莫名把数据都清空了
+//    bloomFilter = new BloomFilter;
+//    indexArea = new IndexArea;
 //    this->timeStamp = currentTime;
 }
 

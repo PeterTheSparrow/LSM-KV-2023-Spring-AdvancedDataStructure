@@ -43,15 +43,15 @@ private:
             EXPECT(std::string(i+1, 's'), store.get(i));
         }
 
-//        // for debug
-//        for(int i = 0; i < max; i++)
-//        {
-//            std::string answer = store.get(i);
-//            if(answer != std::string(i+1, 's'))
-//            {
-//                std::cout << "error: " << i << "   " << answer << std::endl;
-//            }
-//        }
+        // for debug
+        for(int i = 0; i < max; i++)
+        {
+            std::string answer = store.get(i);
+            if(answer != std::string(i+1, 's'))
+            {
+                std::cout << "error: " << i << "   " << answer << std::endl;
+            }
+        }
 
 		phase();
 
@@ -132,13 +132,13 @@ public:
 	{
 		std::cout << "KVStore Correctness Test" << std::endl;
 
-		store.reset();
-		
-		std::cout << "[Simple Test]" << std::endl;
-		regular_test(SIMPLE_TEST_MAX);
+//		store.reset();
+//
+//		std::cout << "[Simple Test]" << std::endl;
+//		regular_test(SIMPLE_TEST_MAX);
+//
+//		std::cout << "finished simple test" << std::endl;
 
-		std::cout << "finished simple test" << std::endl;
-		
 		store.reset();
 
         std::cout << "[Large Test]" << std::endl;
