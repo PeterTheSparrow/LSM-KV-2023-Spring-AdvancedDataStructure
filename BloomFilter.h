@@ -13,7 +13,7 @@
 class BloomFilter
 {
 private:
-    uint32_t *hashTable;
+
 
 public:
     bool *checkBits;
@@ -26,16 +26,10 @@ public:
         {
             checkBits[i] = false;
         }
-        hashTable = new uint32_t[4];
-        for(int i = 0; i < 4; i++)
-        {
-            hashTable[i] = 0;
-        }
     }
     ~BloomFilter()
     {
         delete [] checkBits;
-        delete [] hashTable;
     }
     /**
      * @brief 将 key 加入到布隆过滤器中
@@ -44,7 +38,8 @@ public:
      */
     void addIntoFilter(uint64_t key)
     {
-        MurmurHash3_x64_128(&key, sizeof(key), 1, hashTable);
+        uint32_t hashTable[4] = {0};
+        MurmurHash3_x64_128(&key, sizeof(key), 1, &hashTable);
         for(int i = 0; i < 4; i++)
         {
             checkBits[hashTable[i] % 10240] = true;
@@ -60,7 +55,8 @@ public:
      */
     bool searchInFilter(uint64_t key)
     {
-        MurmurHash3_x64_128(&key, sizeof(key), 1, hashTable);
+        uint32_t hashTable[4] = {0};
+        MurmurHash3_x64_128(&key, sizeof(key), 1, &hashTable);
         for(int i = 0; i < 4; i++)
         {
             if(checkBits[hashTable[i] % 10240] == false)

@@ -74,9 +74,9 @@ KVStore::~KVStore()
     // 释放内存
     delete memTable0;
 
-    for(int i = 0; i < this->theCache.size(); i++)
+    for(uint64_t i = 0; i < this->theCache.size(); i++)
     {
-        for(int j = 0; j < this->theCache[i].size(); j++)
+        for(uint64_t j = 0; j < this->theCache[i].size(); j++)
         {
             delete this->theCache[i][j];
         }
@@ -129,15 +129,10 @@ std::string KVStore::get(uint64_t key)
         return answer;
     }
 
-
-    // 实现存储的部分——读文件，把文件读到内存中，转化为SSTable，然后查找
-    // 遍历所有文件缓存
-    // TAG 对啊！我遍历文件缓存的时候直接所有都遍历一遍就行了！不用管是第几层的吧，然后对应找文件名就可以（毕竟访问内存里面的速度是很快的，所以不如直接遍历）
-    // TAG 这里对应不同的缓存策略，我调用不同的函数
-//    std::cout << "search in disk" << std::endl;
-    bool doFind = findInDisk1(answer, key);
+    // 通过调用不同的函数，实现不同的缓存策略
+//    bool doFind = findInDisk1(answer, key);
 //    bool doFind = findInDisk2(answer, key);
-//     bool doFind = findInDisk3(answer, key);
+     bool doFind = findInDisk3(answer, key);
     if(doFind)
     {
         if(answer == "~DELETED~")
@@ -317,6 +312,14 @@ void KVStore::convertMemTableIntoMemory()
 
     newCache->setAllData(memTable0->getMinKey(), memTable0->getMaxKey(), allKVPairs.size(), this->currentTimestamp, fileName, this->currentTimestamp);
 
+//    // TODO for debug 打印布隆过滤器的每个byte
+//    std::cout << "bloom" << std::endl;
+//    for(int i = 0; i < 10240; i++)
+//    {
+//        std::cout << newCache->bloomFilter->checkBits[i];
+//    }
+//    std::cout << std::endl;
+
     // 直接加入第0层的cache，后面调整是后面的事情
     if(this->theCache.empty())
     {
@@ -332,6 +335,13 @@ void KVStore::convertMemTableIntoMemory()
     this->currentTimestamp += 1;//时间戳只能这里加，因为前面需要更新缓存的时间
     // 把第0层的cache排序，按照时间戳从大到小排（其实不排喜欢也没关系，反正第0层到时候merge的时候是全部拿走）
     std::sort(theCache[0].begin(),theCache[0].end(), SSTableCache::CompareSSTableCache);
+
+//    // TODO for debug 打印缓存中的布隆过滤器
+//    std::cout << "bloom in cache" << std::endl;
+//    for(int i = 0; i < 10240; i++)
+//    {
+//        std::cout << this->theCache[0][0]->bloomFilter->checkBits[i];
+//    }
 }
 
 
@@ -516,28 +526,7 @@ void KVStore::checkCompaction()
 //    int maxFileNum = INT_MAX;
 //    int levelIndex = 0;
     int height = this->theCache.size();
-    // // 这里不能直接auto，因为下面有可能新增出来一层，直接调用会出垃圾值的bug...
-    // TAG 新增的一层其实并不用检测，可以从数学的角度证明，如果你按照等比数列来递增，新增的一层永远不会爆炸
-//    for(auto it = this->theCache.begin(); it != this->theCache.end(); it++)
-//    {
-//        // for debug
-//        std::cout << "------check each level: level " << levelIndex << " has " << it->size() << " files" << std::endl;
-//        if(it->empty()) // 未初始化的vector，直接调用size()函数会得到垃圾值
-//        {
-//            break;
-//        }
-//        if(it->size() > maxFileNum)
-//        {
-//            // 归并当前层
-//            compactSingleLevel(levelIndex);
-//        }
-//        else
-//        {
-//            break;
-//        }
-//        maxFileNum *= LEVEL_CHANGE;
-//        levelIndex += 1;
-//    }
+
     for(int i = 0; i < height; i++)
     {
 //        // for debug
@@ -612,6 +601,7 @@ void KVStore::compactSingleLevel(int levelNum)
                 maxKeyInAll = theSSTable->header->maxKey;
             }
             tablesToMerge.push_back(theSSTable);
+            // 删除文件
             utils::rmfile(fileRoutine.c_str());
         }
         // 清除第0层的所有文件
@@ -623,7 +613,10 @@ void KVStore::compactSingleLevel(int levelNum)
 //        std::cout << "level " << levelNum << " has " << this->theCache[levelNum].size() << " files" << std::endl;
 
         // 选择该层时间戳最小的若干文件
-        int fileNum = this->theCache[levelNum].size() - (int)pow(LEVEL_CHANGE, levelNum + 1);
+        int maxFileNumber = 2;
+        for(int i = 0; i < levelNum; i++)
+            maxFileNumber *= 2;
+        int fileNum = this->theCache[levelNum].size() - maxFileNumber;
         // 其实这里不一定有必要sort，但是还是sort一下；如果每次我们修改缓存都是按照时间戳排列的话，这里就没有必要sort了
         // 把时间戳从大到小排，选择最后的fileNum个文件
         std::sort(this->theCache[levelNum].begin(), this->theCache[levelNum].end(), SSTableCache::CompareSSTableCache);
@@ -661,7 +654,6 @@ void KVStore::compactSingleLevel(int levelNum)
 
 //            // for debug
 //            std::cout << "delete file " << fileRoutine << std::endl;
-
         }
         // 删除缓存中的文件
         this->theCache[levelNum].erase(this->theCache[levelNum].begin() + levelSize - fileNum, this->theCache[levelNum].end());
@@ -686,6 +678,8 @@ void KVStore::compactSingleLevel(int levelNum)
                 this->theCache[levelNum].erase(it);
 //                // for debug
 //                std::cout << "delete file " << fileRoutine << std::endl;
+                // 删除文件
+                utils::rmfile(fileRoutine.c_str());
             }
             else
             {
