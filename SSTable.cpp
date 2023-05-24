@@ -62,7 +62,20 @@ void SSTable::convertFileToSSTable(std::string routine)
 
     filter = new BloomFilter;
 
-    fin.read((char *)(filter->checkBits), 10240 * sizeof(char));
+//    fin.read((char *)(filter->checkBits), 10240 * sizeof(char));
+    for(int i = 0; i < 10240; i++)
+    {
+        char temp;
+        fin.read((char *)&temp, sizeof(char));
+        if(temp == '1')
+        {
+            filter->checkBits[i] = true;
+        }
+        else
+        {
+            filter->checkBits[i] = false;
+        }
+    }
 
     // 读取index area
     indexArea = new IndexArea;

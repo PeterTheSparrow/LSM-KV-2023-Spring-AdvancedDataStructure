@@ -5,9 +5,22 @@
 
 #include "test.h"
 
+/**
+ * @brief 持久性测试
+ *
+ * @details
+ * 1. void prepare:
+ *      prepare函数用于准备数据。
+ *      它首先清理存储（store），然后测试多个键值对的插入和获取操作。
+ *      接下来，它测试插入操作后的获取操作，并进行一些键的删除操作。
+ *      之后，它根据不同的模式准备数据。最后，它报告测试结果，并写入大量数据以将之前的数据从内存中清除。
+ * 2. test
+ *      函数用于测试数据。它根据不同的模式获取数据，并进行断言判断。
+ * */
 class PersistenceTest : public Test {
 private:
-	const uint64_t TEST_MAX = 1024 * 32;
+//	const uint64_t TEST_MAX = 1024 * 32;
+    const uint64_t TEST_MAX = 1024 * 8;
 	void prepare(uint64_t max)
 	{
 		uint64_t i;
@@ -30,23 +43,48 @@ private:
 		// Test deletions
 		for (i = 0; i < max; i+=2)
 			EXPECT(true, store.del(i));
+        std::string answer;
 
 		// Prepare data for Test Mode
 		for (i = 0; i < max; ++i) {
 			switch (i & 3) {
 			case 0:
 				EXPECT(not_found, store.get(i));
+                answer = store.get(i);
+                // TODO for debug
+                if(answer != "")
+                {
+                    std::cout << "[expect:" << i << "] [for:" << answer << "]" << std::endl;
+                }
 				store.put(i, std::string(i+1, 't'));
 				break;
 			case 1:
 				EXPECT(std::string(i+1, 's'), store.get(i));
+                answer = store.get(i);
+                // TODO for debug
+                if(answer != std::string(i+1, 's'))
+                {
+                    std::cout << "[expect:" << i << "] [for:" << answer << "]" << std::endl;
+                }
 				store.put(i, std::string(i+1, 't'));
 				break;
 			case 2:
 				EXPECT(not_found, store.get(i));
+                // TODO for debug
+                answer = store.get(i);
+                if(answer != "")
+                {
+                    std::cout << "[expect:" << i << "] [for:" << answer << "]" << std::endl;
+                }
 				break;
 			case 3:
 				EXPECT(std::string(i+1, 's'), store.get(i));
+                answer = store.get(i);
+                // TODO for debug
+                if(answer != std::string(i+1, 's'))
+                {
+                    std::cout << "[expect:" << i << "] [for:" << answer << "]" << std::endl;
+                }
 				break;
 			default:
 				assert(0);

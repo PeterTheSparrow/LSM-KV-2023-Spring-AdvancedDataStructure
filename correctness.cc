@@ -8,7 +8,7 @@ class CorrectnessTest : public Test {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
 //	const uint64_t LARGE_TEST_MAX = 1024 * 64;
-    const uint64_t LARGE_TEST_MAX = 1024 * 8;
+    const uint64_t LARGE_TEST_MAX = 1024 * 10;
 
 	void regular_test(uint64_t max)
 	{
@@ -43,13 +43,20 @@ private:
             EXPECT(std::string(i+1, 's'), store.get(i));
         }
 
-        // for debug
+        // TODO for debug
+        // 输出MemTable中的元素范围
+        std::cout << "min in memtable: " << store.memTable0->getMinKey() << std::endl;
+        std::cout << "max in memtable: " << store.memTable0->getMaxKey() << std::endl;
+
+
+
+        // TODO for debug
         for(int i = 0; i < max; i++)
         {
             std::string answer = store.get(i);
             if(answer != std::string(i+1, 's'))
             {
-                std::cout << "error: " << i << "   " << answer << std::endl;
+                std::cout << "error while finding existing: " << i << "   " << "answer:" << answer << std::endl;
             }
         }
 
@@ -59,7 +66,7 @@ private:
 		std::cout << "Test scan" << std::endl;
 		// std::list<std::pair<uint64_t, std::string> > list_ans;
 		// std::list<std::pair<uint64_t, std::string> > list_stu;
-		
+
 		// for (i = 0; i < max / 2; ++i) {
 		// 	list_ans.emplace_back(std::make_pair(i, std::string(i+1, 's')));
 		// }
@@ -94,26 +101,27 @@ private:
 		for (i = 0; i < max; ++i)
 			EXPECT((i & 1) ? std::string(i+1, 's') : not_found,
 			       store.get(i));
-//        // for debug
-//        std::string answer = "";
-//        for (i = 0; i < max; ++i)
-//        {
-//            if(i % 2 == 0)
-//            {
-//                answer = store.get(i);
-//                if(answer != "")
-//                {
-//                    std::cout << "wrong i = " << i << "answer = " << answer << std::endl;
-//                }
-//            }
-//            else
-//            {
-//                if(store.get(i) != std::string(i+1, 's'))
-//                {
-//                    std::cout << "incorrect i = " << i << std::endl;
-//                }
-//            }
-//        }
+////        // TODO for debug
+////        std::string answer = "";
+////        for (i = 0; i < max; ++i)
+////        {
+////            if(i % 2 == 0)
+////            {
+////                answer = store.get(i);
+////                if(answer != "")
+////                {
+////                    std::cout << "wrong i = " << i << ",answer = " << answer << std::endl;
+////                }
+////            }
+////            else
+////            {
+////                answer = store.get(i);
+////                if(answer != std::string(i+1, 's'))
+////                {
+////                    std::cout << "incorrect i = " << i << ",answer = " << answer << std::endl;
+////                }
+////            }
+////        }
 
 		for (i = 1; i < max; ++i)
 			EXPECT(i & 1, store.del(i));

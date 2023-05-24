@@ -12,6 +12,7 @@
 class KVStore : public KVStoreAPI
 {
 private:
+public:
     MemTable * memTable0 = nullptr;
     uint64_t currentTimestamp = 0;
     std::string dataStoreDir;

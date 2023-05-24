@@ -135,11 +135,13 @@ std::string KVStore::get(uint64_t key)
     // TAG 对啊！我遍历文件缓存的时候直接所有都遍历一遍就行了！不用管是第几层的吧，然后对应找文件名就可以（毕竟访问内存里面的速度是很快的，所以不如直接遍历）
     // TAG 这里对应不同的缓存策略，我调用不同的函数
 //    std::cout << "search in disk" << std::endl;
-//    bool doFind = findInDisk1(answer, key);
+    bool doFind = findInDisk1(answer, key);
 //    bool doFind = findInDisk2(answer, key);
-     bool doFind = findInDisk3(answer, key);
+//     bool doFind = findInDisk3(answer, key);
     if(doFind)
     {
+        if(answer == "~DELETED~")
+            answer = "";
         return answer;
     }
 
@@ -266,11 +268,13 @@ void KVStore::convertMemTableIntoMemory()
     {
         if (newCache->bloomFilter->checkBits[i])
         {
-            buffer[i + 32] = '1';
+//            buffer[i + 32] = '1';
+            buffer[i + 32] = true;
         }
         else
         {
-            buffer[i + 32] = '0';
+//            buffer[i + 32] = '0';
+            buffer[i + 32] = false;
         }
     }
 
@@ -341,6 +345,9 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
     {
         return false;
     }
+//    // TODO for debug
+//    std::cout << "-------------we begin to find in disk1------------" << "key: " << key << std::endl;
+
     // 只在第0层查找
 //    for(auto & it : this->theCache[0])
 //    {
@@ -357,13 +364,20 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
 //    }
     int levelNumber = this->theCache.size(); // the number of levels in the disk
     // traverse the whole './data' folder
+
     for(int i = 0; i < levelNumber; i++)
     {
-        for(auto & it: this->theCache[i])
-        {
-            std::string fileRoutine = it->fileRoutine;
+//        // TODO for debug
+//        std::cout << "-----we are in level " << i << "-----" << std::endl;
 
-            SSTable * theSSTable = new SSTable;
+        for(auto it = this->theCache[i].begin(); it != this->theCache[i].end(); it++)
+        {
+//            // TODO for debug
+//            std::cout << ">> " << (*it)->fileRoutine <<"  " << "min:" << (*it)->header->minKey << " max:" << (*it)->header->maxKey << std::endl;
+
+            std::string fileRoutine = (*it)->fileRoutine;
+
+            SSTable *theSSTable = new SSTable;
             theSSTable->convertFileToSSTable(fileRoutine);
             if(theSSTable->findInSSTable(answer, key))
             {
@@ -372,6 +386,19 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
             }
             delete theSSTable;
         }
+//        for(auto & it: this->theCache[i])
+//        {
+//            std::string fileRoutine = it->fileRoutine;
+//
+//            SSTable * theSSTable = new SSTable;
+//            theSSTable->convertFileToSSTable(fileRoutine);
+//            if(theSSTable->findInSSTable(answer, key))
+//            {
+//                delete theSSTable;
+//                return true;
+//            }
+//            delete theSSTable;
+//        }
     }
     return false;
 }
@@ -436,13 +463,31 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 {
     // 遍历缓存，对于每一个缓存，用bloom filter判断是否存在，如果存在，再读文件查找，如果找到了，返回true
     // 如果没找到，则继续搜索，直到搜索完毕所有缓存为止
+
+
+//    // TODO for debug
+//    std::cout << "------we begin to find in disk3------" << std::endl;
+//
+//    std::cout << ">>>>>> the size of theCache: " << theCache.size() << std::endl;
     for(auto it1 = theCache.begin(); it1 != theCache.end(); it1++)
     {
+//        // TODO for debug
+//        std::cout << ">> the size of theCache[i]: " << it1->size() << std::endl;
+
         for(auto it2 = it1->begin(); it2 != it1->end(); it2++)
         {
             // 直接用bloom filter判断是否存在
+
+//            // TODO for debug: print out the max and min key of the cache
+//            std::cout << "the minKey of the cache: " << (*it2)->header->minKey << std::endl;
+//            std::cout << "the maxKey of the cache: " << (*it2)->header->maxKey << std::endl;
+
             if((*it2)->bloomFilter->searchInFilter(key))
             {
+//                // TODO for debug
+//                std::cout << ">> we find the key in the bloom filter!" << std::endl;
+//                std::cout << ">> the fileRoutine is: " << (*it2)->fileRoutine << std::endl;
+
                 std::string fileRoutine = (*it2)->fileRoutine;
                 SSTable * theSSTable = new SSTable;
                 theSSTable->convertFileToSSTable(fileRoutine);
@@ -511,6 +556,15 @@ void KVStore::checkCompaction()
             break;
         }
         maxFileNum *= LEVEL_CHANGE;
+    }
+    // 如果新增了一层
+    if(this->theCache.size() > height)
+    {
+        // 归并新增的一层
+        if(this->theCache[height].size() > maxFileNum)
+        {
+            compactSingleLevel(height);
+        }
     }
 //    // for debug: 打印所有缓存的信息
 //    std::cout << ">>>>>>------------we finish a round of check--------------------<<<<<<" << std::endl;
