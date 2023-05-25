@@ -131,6 +131,60 @@ private:
 			}
 		}
 
+        // TODO for debug
+        // 如果存在搜索出的答案和实际情况不一致的时候，输出到txt文件
+        std::ofstream fout("persistence_error.txt");
+
+        std::string answer = "";
+        for (i = 0; i < max; ++i) {
+            if(i & 3 == 0)
+            {
+                answer = store.get(i);
+                if(answer != std::string(i+1, 't'))
+                {
+                    fout << "------> i = " << i << std::endl;
+                    fout << "error answer = " << answer << std::endl;
+                    fout << "std::string(i+1, 't') = " << std::string(i+1, 't') << std::endl;
+                }
+            }
+            else if(i & 3 == 1)
+            {
+                answer = store.get(i);
+                if(answer != std::string(i+1, 't'))
+                {
+                    fout << "------> i = " << i << std::endl;
+                    fout << "error answer = " << answer << std::endl;
+                    fout << "std::string(i+1, 't') = " << std::string(i+1, 't') << std::endl;
+                }
+            }
+            else if(i & 3 == 2)
+            {
+                answer = store.get(i);
+                if(answer != "")
+                {
+                    fout << "------> i = " << i << std::endl;
+                    fout << "error answer = " << answer << std::endl;
+                    fout << "not_found = " << not_found << std::endl;
+                }
+            }
+            else if(i & 3 == 3)
+            {
+                answer = store.get(i);
+                if(answer != std::string(i+1, 's'))
+                {
+                    fout << "------> i = " << i << std::endl;
+                    fout << "error answer = " << answer << std::endl;
+                    fout << "std::string(i+1, 's') = " << std::string(i+1, 's') << std::endl;
+                }
+            }
+        }
+
+        fout.close();
+
+        // TODO for debug
+        // 输出此时所有缓存的信息，到文件里
+        store.WriteAllCacheInfo(142857);
+
 		phase();
 
 		report();

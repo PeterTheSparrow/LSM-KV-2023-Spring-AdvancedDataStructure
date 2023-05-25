@@ -56,6 +56,9 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
                 std::sort(this->theCache[i].begin(), this->theCache[i].end(), SSTableCache::CompareSSTableCache);
             }
         }
+        // TODO for debug
+        // 打印缓存信息
+        this->WriteAllCacheInfo(1008989898);
     }
     else
     {
@@ -668,7 +671,7 @@ void KVStore::compactSingleLevel(int levelNum)
 void KVStore::WriteAllCacheInfo(int whereEnter) {
     // 将当前所有缓存的信息写入文件
     std::ofstream out;
-    out.open("cacheInfoWhenBroken.txt", std::ios::out);
+    out.open("holyShit.txt", std::ios::out);
 
     out << "where enter:" << whereEnter << std::endl;
 

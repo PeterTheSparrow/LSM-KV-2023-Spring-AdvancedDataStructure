@@ -434,8 +434,26 @@ void SSTableCache::readFileToFormCache(std::string routine, std::string fileName
 
     this->header->setAllDataInHeader(timeStamp, kvNum, minKey, maxKey);
 
-    // read bloom filter
-    fin.read((char *)this->bloomFilter->checkBits, sizeof(char) * 10240);
+//    // read bloom filter
+//    fin.read((char *)this->bloomFilter->checkBits, sizeof(char) * 10240);
+    // TODO for debug 感觉是布隆过滤器读错了
+    char *buffer0 = new char[10240];
+    fin.read((char *)buffer0, sizeof(char) * 10240);
+
+    for(int i = 0; i < 10240; i++)
+    {
+        if(buffer0[i] == '1')
+        {
+            this->bloomFilter->checkBits[i] = true;
+        }
+        else
+        {
+            this->bloomFilter->checkBits[i] = false;
+        }
+    }
+
+    delete [] buffer0;
+
 
     // read index area
     this->indexArea = new IndexArea;
