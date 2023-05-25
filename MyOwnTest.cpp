@@ -306,6 +306,44 @@ void testVectorSort()
     }
 }
 
+struct eason
+{
+    int min;
+    int max;
+    eason(int min, int max):min(min),max(max){}
+};
+
+void testVector()
+{
+    int min = 89;
+    int max = 156;
+
+    std::vector<eason> testVector;
+    testVector.push_back(eason(17, 26));
+    testVector.push_back(eason(32, 48));
+    testVector.push_back(eason(5, 68));
+    testVector.push_back(eason(72, 448));
+    testVector.push_back(eason(512, 1024));
+
+    for(auto it = testVector.begin(); it != testVector.end();)
+    {
+        if((*it).min <= min && (*it).max >= max)
+        {
+            it = testVector.erase(it);
+        }
+        else
+        {
+            it++;
+        }
+    }
+
+    // print vector
+    for(int i = 0; i < testVector.size(); i++)
+    {
+        std::cout << testVector[i].min << " " << testVector[i].max << std::endl;
+    }
+}
+
 int main()
 {
 //    testSkipList();
@@ -315,7 +353,7 @@ int main()
 //    CheckClass * checkClass = new CheckClass();
 //    checkClass->addToMemTableUntilExplode();
 //    splitStringTest();
-    testVectorSort();
-
+//    testVectorSort();
+    testVector();
     return 0;
 }

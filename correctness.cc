@@ -8,8 +8,8 @@
 class CorrectnessTest : public Test {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
-//	const uint64_t LARGE_TEST_MAX = 1024 * 64;
-    const uint64_t LARGE_TEST_MAX = 1024 * 32;
+	const uint64_t LARGE_TEST_MAX = 1024 * 64;
+//    const uint64_t LARGE_TEST_MAX = 1024 * 32;
 
 	void regular_test(uint64_t max)
 	{
@@ -30,11 +30,24 @@ private:
 		// Test multiple key-value pairs
 		std::cout << "Test multiple key-value pairs" << std::endl;
 		for (i = 0; i < max; ++i) {
-//            std::cout << "--input " << i << "--"<< std::endl;
 			store.put(i, std::string(i+1, 's'));
 			EXPECT(std::string(i+1, 's'), store.get(i));
 		}
 		phase();
+
+        // TODO for debug 所有缓存信息写到文件
+        // 把theCache中每一层包含几个文件，所有文件名的信息写到theCache.txt中
+        std::ofstream out("theCache-correctness.txt");
+        out << "theCache size: " << store.theCache.size() << std::endl;
+
+        for(int i = 0; i < store.theCache.size(); i++)
+        {
+            out << "level " << i << " size: " << store.theCache[i].size() << std::endl;
+            for(int j = 0; j < store.theCache[i].size(); j++)
+            {
+                out << "level " << i << " file " << j << " name: " << store.theCache[i][j]->fileRoutine << std::endl;
+            }
+        }
 
 		// Test after all insertions
 		std::cout << "Test after all insertions" << std::endl;
@@ -109,19 +122,7 @@ private:
 
 		phase();
 
-//        // TODO for debug 所有缓存信息写到文件
-//        // 把theCache中每一层包含几个文件，所有文件名的信息写到theCache.txt中
-//        std::ofstream out("theCache-correctness.txt");
-//        out << "theCache size: " << store.theCache.size() << std::endl;
-//
-//        for(int i = 0; i < store.theCache.size(); i++)
-//        {
-//            out << "level " << i << " size: " << store.theCache[i].size() << std::endl;
-//            for(int j = 0; j < store.theCache[i].size(); j++)
-//            {
-//                out << "level " << i << " file " << j << " name: " << store.theCache[i][j]->fileRoutine << std::endl;
-//            }
-//        }
+
 
 
 		report();

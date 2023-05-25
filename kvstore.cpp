@@ -521,9 +521,6 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 // 遍历缓存，查看每一层是否需要merge
 void KVStore::checkCompaction()
 {
-//    // for debug
-//    std::cout << "------------we begin a new round of check--------------------" << std::endl;
-
     int maxFileNum = LEVEL_CHANGE;
     // // for debug 直接把第0层开到无穷大
 //    int maxFileNum = INT_MAX;
@@ -531,8 +528,6 @@ void KVStore::checkCompaction()
 
     for(int i = 0; i < height; i++)
     {
-//        // for debug
-//        std::cout << "------check each level: level " << i << " has " << this->theCache[i].size() << " files" << std::endl;
         if(this->theCache[i].empty()) // 未初始化的vector，直接调用size()函数会得到垃圾值
         {
             break;
@@ -548,43 +543,25 @@ void KVStore::checkCompaction()
         }
         maxFileNum *= LEVEL_CHANGE;
     }
-//    // for debug: 打印所有缓存的信息
-//    std::cout << ">>>>>>------------we finish a round of check--------------------<<<<<<" << std::endl;
-//    for(auto it = this->theCache.begin(); it != this->theCache.end(); it++)
-//    {
-//        // for debug
-//        std::cout << "--[check each level]: level " << it - this->theCache.begin() << " has " << it->size() << " files" << std::endl;
-//
-//        // print out all file names and key info
-//        for(auto it2 = it->begin(); it2 != it->end(); it2++)
-//        {
-//            std::cout << "file name: " << (*it2)->fileRoutine << " minKey: " << (*it2)->header->minKey << " maxKey: " << (*it2)->header->maxKey << std::endl;
-//        }
-//    }
 }
 
 // 归并某个特定的层
 void KVStore::compactSingleLevel(int levelNum)
 {
-//    // for debug
-//    std::cout << "---[begin func: compactSingleLevel] compact level " << levelNum << std::endl;
-
-    // 检查下一层是否存在，如果不存在直接新建一层
     std::vector<SSTable *> tablesToMerge;
     uint64_t minKeyInAll = UINT64_MAX, maxKeyInAll = 0;
 
     if(levelNum == 0)
     {
-        // 选择第0层的所有文件
-//        // for debug
-//        std::cout << "level 0" <<  " has " << this->theCache[levelNum].size() << " files" << std::endl;
-
-        std::sort(theCache[0].begin(),theCache[0].end(), SSTableCache::CompareSSTableCache);
         for(auto it = this->theCache[0].begin(); it != this->theCache[0].end(); it++)
         {
             std::string fileRoutine = (*it)->fileRoutine;
             SSTable * theSSTable = new SSTable;
-            theSSTable->convertFileToSSTable(fileRoutine);
+            int returnValue = theSSTable->convertFileToSSTable(fileRoutine);
+            if(returnValue == 1)
+            {
+                this->WriteAllCacheInfo(1);
+            }
             if(theSSTable->header->minKey < minKeyInAll)
             {
                 minKeyInAll = theSSTable->header->minKey;
@@ -597,16 +574,17 @@ void KVStore::compactSingleLevel(int levelNum)
             // 删除文件
             utils::rmfile(fileRoutine.c_str());
         }
-        // 清除第0层的所有文件
+        // 清除缓存：第0层的所有文件
         this->theCache[0].erase(this->theCache[0].begin(), this->theCache[0].end());
     }
     else
     {
-      // 选择该层时间戳最小的若干文件
+        // 选择该层时间戳最小的若干文件
         int maxFileNumber = 2;
         for(int i = 0; i < levelNum; i++)
             maxFileNumber *= 2;
         int fileNum = this->theCache[levelNum].size() - maxFileNumber;
+
         // 其实这里不一定有必要sort，但是还是sort一下；如果每次我们修改缓存都是按照时间戳排列的话，这里就没有必要sort了
         // 把时间戳从大到小排，选择最后的fileNum个文件
         std::sort(this->theCache[levelNum].begin(), this->theCache[levelNum].end(), SSTableCache::CompareSSTableCache);
@@ -617,7 +595,11 @@ void KVStore::compactSingleLevel(int levelNum)
         {
             std::string fileRoutine = this->theCache[levelNum][i]->fileRoutine;
             SSTable * theSSTable = new SSTable;
-            theSSTable->convertFileToSSTable(fileRoutine);
+            int returnValue = theSSTable->convertFileToSSTable(fileRoutine);
+            if(returnValue == 1)
+            {
+                this->WriteAllCacheInfo(2);
+            }
             if(theSSTable->header->minKey < minKeyInAll)
             {
                 minKeyInAll = theSSTable->header->minKey;
@@ -629,7 +611,6 @@ void KVStore::compactSingleLevel(int levelNum)
             tablesToMerge.push_back(theSSTable);
             // 删除磁盘中的文件
             utils::rmfile(fileRoutine.c_str());
-
         }
         // 删除缓存中的文件
         this->theCache[levelNum].erase(this->theCache[levelNum].begin() + levelSize - fileNum, this->theCache[levelNum].end());
@@ -645,12 +626,15 @@ void KVStore::compactSingleLevel(int levelNum)
             {
                 std::string fileRoutine = (*it)->fileRoutine;
                 SSTable * theSSTable = new SSTable;
-                theSSTable->convertFileToSSTable(fileRoutine);
+                int return_value = theSSTable->convertFileToSSTable(fileRoutine);
+                if(return_value == 1)
+                {
+                    // TODO　打印当前所有缓存的值
+                    this->WriteAllCacheInfo(3);
+                }
                 tablesToMerge.push_back(theSSTable);
                 // 把cache里的东西删了
                 this->theCache[levelNum].erase(it);
-//                // for debug
-//                std::cout << "delete file " << fileRoutine << std::endl;
                 // 删除文件
                 utils::rmfile(fileRoutine.c_str());
             }
@@ -665,16 +649,23 @@ void KVStore::compactSingleLevel(int levelNum)
         // 新增一层
         utils::mkdir((this->dataStoreDir + "/level-" + std::to_string(levelNum)).c_str());
         std::vector<SSTableCache *> newFloor;
-        // buggy?
         newFloor.resize(0);
         this->theCache.push_back(newFloor);
     }
 
+    // TODO 应该没有问题
     // 将这些SSTable文件merge，扔到下一层
     SSTable::mergeTables(tablesToMerge);
 
+    // TODO 去下一层的缓存里，根据现有的timestamp去查找有没有时间戳重复的文件，如果有，则统计个数
+    int counter = 0;
+    for(auto it = this->theCache[levelNum].begin(); it != this->theCache[levelNum].end(); it++)
+    {
+        counter ++;
+    }
+
     // 切割获得的新SSTable，将里面的东西保存到磁盘中，同时返回新生成的缓存的std::vector
-    std::vector<SSTableCache*> newCache = tablesToMerge[0]->splitAndSave(this->dataStoreDir + "/level-" + std::to_string(levelNum));
+    std::vector<SSTableCache*> newCache = tablesToMerge[0]->splitAndSave(this->dataStoreDir + "/level-" + std::to_string(levelNum),counter);
     // 把获得的新SSTableCache加入到缓存中，同时将该层的缓存按照时间戳从大到小重新排序
     for(auto it = newCache.begin(); it != newCache.end(); it++)
     {
@@ -682,4 +673,23 @@ void KVStore::compactSingleLevel(int levelNum)
     }
 
     std::sort(this->theCache[levelNum].begin(), this->theCache[levelNum].end(), SSTableCache::CompareSSTableCache);
+}
+
+void KVStore::WriteAllCacheInfo(int whereEnter) {
+    // 将当前所有缓存的信息写入文件
+    std::ofstream out;
+    out.open("cacheInfoWhenBroken.txt", std::ios::out);
+
+    out << "where enter:" << whereEnter << std::endl;
+
+    for(int i = 0; i < this->theCache.size(); i++)
+    {
+        out << "level " << i << " has" << theCache[i].size() << " files" << std::endl;
+        for(int j = 0; j < this->theCache[i].size(); j++)
+        {
+            out << this->theCache[i][j]->fileRoutine << "    time stamp:" << this->theCache[i][j]->header->timeStamp << " min:" << this->theCache[i][j]->header->minKey << " max:" << this->theCache[i][j]->header->maxKey << std::endl;
+        }
+    }
+
+    out.close();
 }

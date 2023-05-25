@@ -40,6 +40,8 @@ private:
     // 将Memtable转化到磁盘中
     void convertMemTableIntoMemory();
 
+    void WriteAllCacheInfo(int whereEnter);
+
     // 根据不同的缓存策略，实现不同的在磁盘里搜索的代码
     // 不缓存
     bool findInDisk1(std::string & answer, uint64_t key);

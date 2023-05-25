@@ -27,13 +27,16 @@ SSTable::~SSTable()
     std::vector<KVNode>().swap(KVPairs);
 }
 
-void SSTable::convertFileToSSTable(std::string routine)
+//void SSTable::convertFileToSSTable(std::string routine)
+int SSTable::convertFileToSSTable(std::string routine)
 {
     std::ifstream fin(routine, std::ios::in | std::ios::binary);
     if(!fin.is_open())
     {
         std::cout << "open file error when convert file to SSTable: " << routine << std::endl;
-        return;
+        // 其实这个时候可以打印所有缓存的信息来查看。
+
+        return 1;
     }
     // 计算整个文件大小
 
@@ -99,6 +102,7 @@ void SSTable::convertFileToSSTable(std::string routine)
     fin.close();
 
     this->formKVVector();
+    return 0;
 }
 
 
@@ -223,11 +227,11 @@ bool SSTable::findInSSTable(std::string &answer, uint64_t key)
 // 同时生成所有这些文件的缓存，将指针传回到KVStore里面去，将缓存保存起来
 // 实现切分和保存文件
 // TAG 合并文件的时候，时间戳是怎么定的——已经是当前最大的时间戳了
-std::vector<SSTableCache *> SSTable::splitAndSave(std::string routine) {
+std::vector<SSTableCache *> SSTable::splitAndSave(std::string routine,int counter) {
     std::vector<SSTableCache *> newCache;
     // 循环切分
-    int fileTag = 0; // 同一时间戳，可能存在多个文件，需要区分标记
-//    int currentSize = 32 + 10240 + 12 * KVPairs.size();
+    int fileTag = counter; // 同一时间戳，可能存在多个文件，需要区分标记
+
     int currentSize = 0;
     for(auto it = this->KVPairs.begin(); it != KVPairs.end(); it++)
     {
@@ -324,7 +328,6 @@ SSTableCache * SSTable::cutOutOneSSTable(int fileTag, std::string routine, int &
         delete newIndexData;
 
         // 把string写入数据区
-        // this is buggy
         memcpy(length_from_data_to_file_begin, pairsToWrite[i].value.c_str(), pairsToWrite[i].value.size());
 
         padding += 12;

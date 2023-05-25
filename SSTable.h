@@ -132,14 +132,15 @@ public:
     // 读取所有char中的信息，生成键值对的vector，加速查找
     void formKVVector();
 
-    void convertFileToSSTable(std::string routine);
+//    void convertFileToSSTable(std::string routine);
+    int convertFileToSSTable(std::string routine);
 
     // 其实需要关注的是两张表的时间，但我也可以传参数的时候就把timeStamp大的传在前面
     // 其实也可以声明在KVStore类里面，但是其实声明在这里主要是为了代码风格，和SSTable相关的函数都写在一起
     static SSTable* mergeTwoTables(SSTable *&table1, SSTable *&table2);
 
     // 实现把一个巨大的SSTable切开的函数
-    std::vector<SSTableCache *> splitAndSave(std::string routine);
+    std::vector<SSTableCache *> splitAndSave(std::string routine, int counter);
 
     // 切出来一个单独的SSTable，返回这个SSTable对应的SSTableCache
     SSTableCache * cutOutOneSSTable(int fileTag, std::string routine, int & currentSize);
