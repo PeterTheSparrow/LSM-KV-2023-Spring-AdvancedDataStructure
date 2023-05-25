@@ -177,7 +177,7 @@ void SSTable::mergeTables(std::vector<SSTable*> &tableList)
 
 void SSTable::mergeRecursively(std::vector<SSTable*> &tableList)
 {
-   int size = tableList.size();
+    int size = tableList.size();
     if(size == 1)
     {
         return;
@@ -359,7 +359,7 @@ SSTableCache * SSTable::cutOutOneSSTable(int fileTag, std::string routine, int &
 
     // 设置newCache中其他的必要数据
     newCache->setAllData(minKey, maxKey, pairsToWrite.size(), this->header->timeStamp, dir, this->header->timeStamp);
-
+    newCache->timeStampIndex = fileTag;
     return newCache;
 }
 

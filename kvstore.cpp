@@ -482,7 +482,6 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
         for(auto it2 = it1->begin(); it2 != it1->end(); it2++)
         {
             // 直接用bloom filter判断是否存在
-
             if((*it2)->bloomFilter->searchInFilter(key))
             {
                 std::string fileRoutine = (*it2)->fileRoutine;
@@ -505,6 +504,7 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 void KVStore::checkCompaction()
 {
     int maxFileNum = LEVEL_CHANGE;
+
     // // for debug 直接把第0层开到无穷大
 //    int maxFileNum = INT_MAX;
     int height = this->theCache.size();
@@ -598,7 +598,9 @@ void KVStore::compactSingleLevel(int levelNum)
         // 删除缓存中的文件
         this->theCache[levelNum].erase(this->theCache[levelNum].begin() + levelSize - fileNum, this->theCache[levelNum].end());
     }
+
     levelNum += 1;
+
     if(levelNum < theCache.size())
     {
         // 在下一层中选择所有数据范围和min与max之间有交集的文件
@@ -644,8 +646,13 @@ void KVStore::compactSingleLevel(int levelNum)
     int counter = 0;
     for(auto it = this->theCache[levelNum].begin(); it != this->theCache[levelNum].end(); it++)
     {
-        counter ++;
+//        if((*it)->header->timeStamp == tablesToMerge[0]->header->timeStamp)
+//            counter ++;
+        // 似乎应该获得最大的那个timeStampIndex，否则似乎还是会导致覆盖的问题
+        if((*it)->timeStampIndex > counter)
+            counter = (*it)->timeStampIndex;
     }
+    counter ++;
 
     // 切割获得的新SSTable，将里面的东西保存到磁盘中，同时返回新生成的缓存的std::vector
     std::vector<SSTableCache*> newCache = tablesToMerge[0]->splitAndSave(this->dataStoreDir + "/level-" + std::to_string(levelNum),counter);

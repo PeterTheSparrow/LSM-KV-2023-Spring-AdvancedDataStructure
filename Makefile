@@ -26,8 +26,8 @@ mytest: MyOwnTest.o SkipList.o
 
 clean:
 # linux下使用-rm，windows下使用-del
-	-rm -f correctness persistence *.o
-#del correctness persistence *.o
+	#-rm -f correctness persistence *.o
+	del correctness persistence *.o
 
 valgrind_correctness: correctness
 	valgrind --leak-check=full ./correctness

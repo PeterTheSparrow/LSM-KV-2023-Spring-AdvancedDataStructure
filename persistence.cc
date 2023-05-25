@@ -21,8 +21,8 @@
  * */
 class PersistenceTest : public Test {
 private:
-//	const uint64_t TEST_MAX = 1024 * 32;
-    const uint64_t TEST_MAX = 1024 * 8;
+	const uint64_t TEST_MAX = 1024 * 32;
+//    const uint64_t TEST_MAX = 1024 * 8;
 	void prepare(uint64_t max)
 	{
 		uint64_t i;
@@ -79,17 +79,6 @@ private:
 		 */
 		for (i = 0; i <= 10240; ++i)
         {
-//            // TODO for debug
-//            std::cout << "i: " << i << std::endl;
-//            // 打印缓存信息
-//            for(auto it = store.theCache.begin(); it != store.theCache.end(); it++)
-//            {
-//                std::cout << "level: " << it - store.theCache.begin() << " size: " << it->size() << std::endl;
-//                for(auto it2 = it->begin(); it2 != it->end(); it2++)
-//                {
-//                    std::cout << "file name: " << (*it2)->fileRoutine << std::endl;
-//                }
-//            }
             store.put(max + i, std::string(1024, 'x'));
         }
 
