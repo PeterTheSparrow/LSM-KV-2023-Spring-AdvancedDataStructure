@@ -35,19 +35,19 @@ private:
 		}
 		phase();
 
-        // TODO for debug 所有缓存信息写到文件
-        // 把theCache中每一层包含几个文件，所有文件名的信息写到theCache.txt中
-        std::ofstream out("theCache-correctness-final.txt");
-        out << "theCache size: " << store.theCache.size() << std::endl;
-
-        for(int i = 0; i < store.theCache.size(); i++)
-        {
-            out << "level " << i << " size: " << store.theCache[i].size() << std::endl;
-            for(int j = 0; j < store.theCache[i].size(); j++)
-            {
-                out << "level " << i << " file " << j << " name: " << store.theCache[i][j]->fileRoutine << " minKey: " << store.theCache[i][j]->header->minKey << " maxKey: " << store.theCache[i][j]->header->maxKey << std::endl;
-            }
-        }
+//        // for debug 所有缓存信息写到文件
+//        // 把theCache中每一层包含几个文件，所有文件名的信息写到theCache.txt中
+//        std::ofstream out("theCache-correctness-final.txt");
+//        out << "theCache size: " << store.theCache.size() << std::endl;
+//
+//        for(int i = 0; i < store.theCache.size(); i++)
+//        {
+//            out << "level " << i << " size: " << store.theCache[i].size() << std::endl;
+//            for(int j = 0; j < store.theCache[i].size(); j++)
+//            {
+//                out << "level " << i << " file " << j << " name: " << store.theCache[i][j]->fileRoutine << " minKey: " << store.theCache[i][j]->header->minKey << " maxKey: " << store.theCache[i][j]->header->maxKey << std::endl;
+//            }
+//        }
 
 		// Test after all insertions
 		std::cout << "Test after all insertions" << std::endl;
@@ -57,31 +57,31 @@ private:
             EXPECT(std::string(i+1, 's'), store.get(i));
         }
 
-        // TODO for debug
-        // 输出MemTable中的元素范围
-        std::cout << "min in memtable: " << store.memTable0->getMinKey() << std::endl;
-        std::cout << "max in memtable: " << store.memTable0->getMaxKey() << std::endl;
-
-        // TODO for debug
-        std::vector<std::pair<int, std::string>> result;
-        for(int i = 0; i < max; i++)
-        {
-            std::string answer = store.get(i);
-            if(answer != std::string(i+1, 's'))
-            {
-                result.push_back(std::make_pair(i, answer));
-            }
-        }
-
-        // TODO for debug
-        // write into file
-        std::ofstream out2("result.txt");
-        for(int i = 0; i < result.size(); i++)
-        {
-            out2 << "key: " << result[i].first << "  value: " << result[i].second << std::endl;
-        }
-
-        out2.close();
+//        // for debug
+//        // 输出MemTable中的元素范围
+//        std::cout << "min in memtable: " << store.memTable0->getMinKey() << std::endl;
+//        std::cout << "max in memtable: " << store.memTable0->getMaxKey() << std::endl;
+//
+//        // for debug
+//        std::vector<std::pair<int, std::string>> result;
+//        for(int i = 0; i < max; i++)
+//        {
+//            std::string answer = store.get(i);
+//            if(answer != std::string(i+1, 's'))
+//            {
+//                result.push_back(std::make_pair(i, answer));
+//            }
+//        }
+//
+//        // for debug
+//        // write into file
+//        std::ofstream out2("result.txt");
+//        for(int i = 0; i < result.size(); i++)
+//        {
+//            out2 << "key: " << result[i].first << "  value: " << result[i].second << std::endl;
+//        }
+//
+//        out2.close();
 
 		phase();
 
@@ -131,12 +131,9 @@ private:
 
 		phase();
 
-
-
-
 		report();
 
-        store.WriteAllCacheInfo(10086);
+//        store.WriteAllCacheInfo(10086);
 	}
 
 public:

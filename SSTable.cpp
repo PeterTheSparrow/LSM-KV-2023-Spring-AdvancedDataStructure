@@ -436,7 +436,7 @@ void SSTableCache::readFileToFormCache(std::string routine, std::string fileName
 
 //    // read bloom filter
 //    fin.read((char *)this->bloomFilter->checkBits, sizeof(char) * 10240);
-    // TODO for debug 感觉是布隆过滤器读错了
+    // for debug 感觉是布隆过滤器读错了
     char *buffer0 = new char[10240];
     fin.read((char *)buffer0, sizeof(char) * 10240);
 

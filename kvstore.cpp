@@ -56,9 +56,9 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
                 std::sort(this->theCache[i].begin(), this->theCache[i].end(), SSTableCache::CompareSSTableCache);
             }
         }
-        // TODO for debug
-        // 打印缓存信息
-        this->WriteAllCacheInfo(1008989898);
+//        // for debug
+//        // 打印缓存信息
+//        this->WriteAllCacheInfo(1008989898);
     }
     else
     {
@@ -319,7 +319,7 @@ void KVStore::convertMemTableIntoMemory()
 
     newCache->setAllData(memTable0->getMinKey(), memTable0->getMaxKey(), allKVPairs.size(), this->currentTimestamp, fileName, this->currentTimestamp);
 
-//    // TODO for debug 打印布隆过滤器的每个byte
+//    // for debug 打印布隆过滤器的每个byte
 //    std::cout << "bloom" << std::endl;
 //    for(int i = 0; i < 10240; i++)
 //    {
@@ -343,7 +343,7 @@ void KVStore::convertMemTableIntoMemory()
     // 把第0层的cache排序，按照时间戳从大到小排（其实不排喜欢也没关系，反正第0层到时候merge的时候是全部拿走）
     std::sort(theCache[0].begin(),theCache[0].end(), SSTableCache::CompareSSTableCache);
 
-//    // TODO for debug 打印缓存中的布隆过滤器
+//    // for debug 打印缓存中的布隆过滤器
 //    std::cout << "bloom in cache" << std::endl;
 //    for(int i = 0; i < 10240; i++)
 //    {
@@ -357,12 +357,11 @@ void KVStore::convertMemTableIntoMemory()
 // TODO 未检查内存泄漏
 bool KVStore::findInDisk1(std::string & answer, uint64_t key)
 {
-    // TODO bug 这里条件有问题
     if(this->theCache.empty())
     {
         return false;
     }
-//    // TODO for debug
+//    // for debug
 //    std::cout << "-------------we begin to find in disk1------------" << "key: " << key << std::endl;
 
     // 只在第0层查找
@@ -384,12 +383,12 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
 
     for(int i = 0; i < levelNumber; i++)
     {
-//        // TODO for debug
+//        // for debug
 //        std::cout << "-----we are in level " << i << "-----" << std::endl;
 
         for(auto it = this->theCache[i].begin(); it != this->theCache[i].end(); it++)
         {
-//            // TODO for debug
+//            // for debug
 //            std::cout << ">> " << (*it)->fileRoutine <<"  " << "min:" << (*it)->header->minKey << " max:" << (*it)->header->maxKey << std::endl;
 
             std::string fileRoutine = (*it)->fileRoutine;
@@ -617,8 +616,8 @@ void KVStore::compactSingleLevel(int levelNum)
                 int return_value = theSSTable->convertFileToSSTable(fileRoutine);
                 if(return_value == 1)
                 {
-                    // TODO　打印当前所有缓存的值
-                    this->WriteAllCacheInfo(3);
+//                    // 打印当前所有缓存的值
+//                    this->WriteAllCacheInfo(3);
                 }
                 tablesToMerge.push_back(theSSTable);
                 // 把cache里的东西删了
@@ -641,11 +640,11 @@ void KVStore::compactSingleLevel(int levelNum)
         this->theCache.push_back(newFloor);
     }
 
-    // TODO 应该没有问题
+    // 应该没有问题
     // 将这些SSTable文件merge，扔到下一层
     SSTable::mergeTables(tablesToMerge);
 
-    // TODO 去下一层的缓存里，根据现有的timestamp去查找有没有时间戳重复的文件，如果有，则统计个数
+    // 去下一层的缓存里，根据现有的timestamp去查找有没有时间戳重复的文件，如果有，则统计个数
     int counter = 0;
     for(auto it = this->theCache[levelNum].begin(); it != this->theCache[levelNum].end(); it++)
     {

@@ -123,7 +123,7 @@ SkipNode *SkipList::searchNodePrivate(uint64_t keyToSearch) {
  * public的搜索函数，对外界开放
  * */
 SkipNode* SkipList::searchNode(uint64_t keyToSearch) {
-//    // TODO for debug
+//    // for debug
 //    std::cout << "we begin to search in the skip list" << std::endl;
     SkipNode * answer = this->searchNodePrivate(keyToSearch);
 
