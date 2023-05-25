@@ -137,7 +137,6 @@ public:
     // 其实需要关注的是两张表的时间，但我也可以传参数的时候就把timeStamp大的传在前面
     // 其实也可以声明在KVStore类里面，但是其实声明在这里主要是为了代码风格，和SSTable相关的函数都写在一起
     static SSTable* mergeTwoTables(SSTable *&table1, SSTable *&table2);
-//    static SSTable mergeTwoTables(SSTable &table1, SSTable &table2);
 
     // 实现把一个巨大的SSTable切开的函数
     std::vector<SSTableCache *> splitAndSave(std::string routine);
@@ -149,10 +148,8 @@ public:
     // 我传入的list中的时间戳一定是从大到小排布的！
     // 这个是留给外面的类调用的
     static void mergeTables(std::vector<SSTable*> &tableList);
-//    static void mergeTables(std::vector<SSTable> &tableList);
 
 private:
     static void mergeRecursively(std::vector<SSTable*> &tableList);
-//    static void mergeRecursively(std::vector<SSTable> &tableList);
 };
 

@@ -4,11 +4,16 @@
 #include <fstream>
 #include "utils.h"
 #include <algorithm>
-#include <cmath>
 
+/**
+ * @brief KVStore的构造函数
+ *
+ * @param dir 数据存储的目录
+ * */
 KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
 {
     std::string currentDir = dir;
+    this->memTable0 = new MemTable();
     if(currentDir[currentDir.size()-1] == '/')
     {
         currentDir = currentDir.substr(0, currentDir.size()-1);
@@ -17,7 +22,7 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
     if (utils::dirExists(currentDir))
     {
         this->dataStoreDir = currentDir;
-        // 如果存在，那就读文件，生成缓存，更新class的时间戳
+        // 就读文件，生成缓存，更新class的时间戳
         // 扫描指定目录下的所有文件和子目录，并将文件名和子目录名保存到一个字符串向量中
         int levelNum = utils::scanDir(currentDir, this->levelDir);
         if(levelNum == 0)
@@ -57,7 +62,6 @@ KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
         utils::mkdir(currentDir.c_str());
         utils::mkdir((currentDir + "/level-0").c_str());
         this->dataStoreDir = currentDir;
-        this->memTable0 = new MemTable();
     }
 }
 
@@ -66,7 +70,7 @@ KVStore::~KVStore()
     // 将MemTable写入磁盘
     if(memTable0->getSize() != 0)
     {
-        this->convertMemTableIntoMemoryWithoutCache();
+        this->convertMemTableIntoMemory();
     }
     // 进行一次文件的检查和归并
     this->checkCompaction();
@@ -132,7 +136,7 @@ std::string KVStore::get(uint64_t key)
     // 通过调用不同的函数，实现不同的缓存策略
 //    bool doFind = findInDisk1(answer, key);
 //    bool doFind = findInDisk2(answer, key);
-     bool doFind = findInDisk3(answer, key);
+    bool doFind = findInDisk3(answer, key);
     if(doFind)
     {
         if(answer == "~DELETED~")
@@ -515,7 +519,6 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 }
 
 // 遍历缓存，查看每一层是否需要merge
-// TODO 我突然想起来一件事情，就是如果删除的话，merge到最后一层，是不是就该删除了？
 void KVStore::checkCompaction()
 {
 //    // for debug
@@ -524,7 +527,6 @@ void KVStore::checkCompaction()
     int maxFileNum = LEVEL_CHANGE;
     // // for debug 直接把第0层开到无穷大
 //    int maxFileNum = INT_MAX;
-//    int levelIndex = 0;
     int height = this->theCache.size();
 
     for(int i = 0; i < height; i++)
@@ -545,15 +547,6 @@ void KVStore::checkCompaction()
             break;
         }
         maxFileNum *= LEVEL_CHANGE;
-    }
-    // 如果新增了一层
-    if(this->theCache.size() > height)
-    {
-        // 归并新增的一层
-        if(this->theCache[height].size() > maxFileNum)
-        {
-            compactSingleLevel(height);
-        }
     }
 //    // for debug: 打印所有缓存的信息
 //    std::cout << ">>>>>>------------we finish a round of check--------------------<<<<<<" << std::endl;
@@ -609,10 +602,7 @@ void KVStore::compactSingleLevel(int levelNum)
     }
     else
     {
-//        // for debug
-//        std::cout << "level " << levelNum << " has " << this->theCache[levelNum].size() << " files" << std::endl;
-
-        // 选择该层时间戳最小的若干文件
+      // 选择该层时间戳最小的若干文件
         int maxFileNumber = 2;
         for(int i = 0; i < levelNum; i++)
             maxFileNumber *= 2;
@@ -623,20 +613,8 @@ void KVStore::compactSingleLevel(int levelNum)
 
         int levelSize = this->theCache[levelNum].size();
 
-//        // for debug
-//        std::cout << "begin loop" << std::endl;
-
-//        // for debug 输出本层所有文件的文件名、最大最小key
-//        for(auto it = this->theCache[levelNum].begin(); it != this->theCache[levelNum].end(); it++)
-//        {
-//            std::cout << "--all file " << (*it)->fileRoutine << " minKey: " << (*it)->header->minKey << "  maxKey: " << (*it)->header->maxKey << std::endl;
-//        }
-
         for(int i = levelSize - fileNum; i < levelSize; i++)
         {
-//            // for debug 输出选中的所有文件的文件名、最大最小key
-//            std::cout << "----chosen file " << this->theCache[levelNum][i]->fileRoutine << " minKey: " << this->theCache[levelNum][i]->header->minKey << "  maxKey: " << this->theCache[levelNum][i]->header->maxKey << std::endl;
-
             std::string fileRoutine = this->theCache[levelNum][i]->fileRoutine;
             SSTable * theSSTable = new SSTable;
             theSSTable->convertFileToSSTable(fileRoutine);
@@ -652,8 +630,6 @@ void KVStore::compactSingleLevel(int levelNum)
             // 删除磁盘中的文件
             utils::rmfile(fileRoutine.c_str());
 
-//            // for debug
-//            std::cout << "delete file " << fileRoutine << std::endl;
         }
         // 删除缓存中的文件
         this->theCache[levelNum].erase(this->theCache[levelNum].begin() + levelSize - fileNum, this->theCache[levelNum].end());
@@ -661,9 +637,6 @@ void KVStore::compactSingleLevel(int levelNum)
     levelNum += 1;
     if(levelNum < theCache.size())
     {
-//        // for debug
-//        std::cout << "the next level exists" << std::endl;
-
         // 在下一层中选择所有数据范围和min与max之间有交集的文件
         for(auto it = this->theCache[levelNum].begin(); it != this->theCache[levelNum].end();)
         {
@@ -689,8 +662,6 @@ void KVStore::compactSingleLevel(int levelNum)
     }
     else
     {
-//        // for debug
-//        std::cout << "the next level does not exist" << std::endl;
         // 新增一层
         utils::mkdir((this->dataStoreDir + "/level-" + std::to_string(levelNum)).c_str());
         std::vector<SSTableCache *> newFloor;
@@ -699,14 +670,8 @@ void KVStore::compactSingleLevel(int levelNum)
         this->theCache.push_back(newFloor);
     }
 
-//    // for debug
-//    std::cout << "begin merge" << std::endl;
-
     // 将这些SSTable文件merge，扔到下一层
     SSTable::mergeTables(tablesToMerge);
-
-//    // for debug
-//    std::cout << "finish merge" << std::endl;
 
     // 切割获得的新SSTable，将里面的东西保存到磁盘中，同时返回新生成的缓存的std::vector
     std::vector<SSTableCache*> newCache = tablesToMerge[0]->splitAndSave(this->dataStoreDir + "/level-" + std::to_string(levelNum));
@@ -716,79 +681,5 @@ void KVStore::compactSingleLevel(int levelNum)
         this->theCache[levelNum].push_back(*it);
     }
 
-//    // for debug
-//    std::cout << "finish cache add" << std::endl;
-
     std::sort(this->theCache[levelNum].begin(), this->theCache[levelNum].end(), SSTableCache::CompareSSTableCache);
-
-//    // for debug
-//    std::cout << "finish compact"<< std::endl;
-}
-
-void KVStore::convertMemTableIntoMemoryWithoutCache() {
-    // 将MemTable中的内容写入磁盘；但是不加入缓存，因为是析构函数的时候使用
-    std::vector<std::pair<uint64_t, std::string>> allKVPairs = this->memTable0->getAllKVPairs();
-
-    // 把东西写成文件
-    const std::string dir = this->dataStoreDir + "/level-0";
-    char *buffer = new char[MAX_MEMTABLE_SIZE];
-
-    // Header, BloomFilter, IndexArea, DataArea
-    *(uint64_t *)buffer = this->currentTimestamp;
-    *(uint64_t *)(buffer + 8) = allKVPairs.size();
-    *(uint64_t *)(buffer + 16) = memTable0->getMinKey();
-    *(uint64_t *)(buffer + 24) = memTable0->getMaxKey();
-
-    BloomFilter *bloomFilter = new BloomFilter;
-
-    for (int i = 0; i < allKVPairs.size(); i++)
-    {
-        bloomFilter->addIntoFilter(allKVPairs[i].first);
-    }
-
-    // BloomFilter写入buffer
-    for (int i = 0; i < 10240; i++)
-    {
-        if (bloomFilter->checkBits[i])
-        {
-            buffer[i + 32] = '1';
-        }
-        else
-        {
-            buffer[i + 32] = '0';
-        }
-    }
-
-    char *indexStart = buffer + 10240 + 32;
-    int padding = 0; // 指针走过的量
-
-    // 每一个我写到表里面的偏移量，是相对于数据区开始的偏移量
-    char * length_from_data_to_file_begin = (10240 + 32 + 12 * allKVPairs.size()) + buffer;
-    uint32_t offset_from_data_begin = 0;
-
-    for (int i = 0; i < allKVPairs.size(); i++)
-    {
-        // 写入索引区
-        *(uint64_t *)(indexStart + padding) = allKVPairs[i].first;
-        *(uint32_t *)(indexStart + padding + 8) = offset_from_data_begin;
-
-        // 把string写入数据区
-        memcpy(length_from_data_to_file_begin, allKVPairs[i].second.c_str(), allKVPairs[i].second.size());
-
-        padding += 12;
-        offset_from_data_begin += allKVPairs[i].second.size();
-        length_from_data_to_file_begin += allKVPairs[i].second.size();
-    }
-
-    // 文件名取名为当时的时间
-    std::string fileName = dir + "/" + std::to_string(this->currentTimestamp) + "-0.sst";
-
-
-    // 把buffer写入文件
-    std::ofstream fout(fileName, std::ios::out | std::ios::binary);
-    fout.write((char *)buffer, offset_from_data_begin + 10240 + 32 + 12 * allKVPairs.size());
-    fout.close();
-
-    delete[] buffer;
-    delete bloomFilter;
 }

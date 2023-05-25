@@ -32,7 +32,7 @@ void SSTable::convertFileToSSTable(std::string routine)
     std::ifstream fin(routine, std::ios::in | std::ios::binary);
     if(!fin.is_open())
     {
-        std::cout << "open file error" << std::endl;
+        std::cout << "open file error when convert file to SSTable: " << routine << std::endl;
         return;
     }
     // 计算整个文件大小
@@ -101,45 +101,6 @@ void SSTable::convertFileToSSTable(std::string routine)
     this->formKVVector();
 }
 
-//// 说明：这个查找函数已经废弃，因为现在已经将所有的信息从char * dataArea转移到了std::vector<KVNode> KVPairs中！
-//bool SSTable::findInSSTableAbandoned(std::string & answer, uint64_t key)
-//{
-//    // 先判断key是否在范围内
-//    if(key < header->minKey || key > header->maxKey)
-//    {
-//        return false;
-//    }
-//    // bloom filter
-//    if(!filter->searchInFilter(key))
-//    {
-//        return false;
-//    }
-//    // index area
-//    for(auto it = this->indexArea->indexDataList.begin(); it != this->indexArea->indexDataList.end(); it++)
-//    {
-//        if(it->key == key)
-//        {
-//            // data area
-//            uint32_t offset = it->offset;
-//            uint32_t length = 0;
-//            if(it + 1 == this->indexArea->indexDataList.end())
-//            {
-//                // BUG 读最后一个文件的时候会不会出问题？
-//                length = this->dataSize - offset;
-//            }
-//            else
-//            {
-//                length = (it + 1)->offset - offset;
-//            }
-//            answer = std::string(this->dataArea + offset, length);
-////            if(answer == "~DELETED~")
-////            {
-////                return false;
-////            }
-//            return true;
-//        }
-//    }
-//}
 
 // 这里默认传入的参数，table1的时间戳比table2的时间戳大
 // 其实这里更新header没有意义，因为后面都要全部merge再重塑的，但是唯一有意义的是时间戳，要用最大的时间戳
@@ -189,8 +150,6 @@ SSTable* SSTable::mergeTwoTables(SSTable *&table1, SSTable *&table2)
 // 说明：这里传入的参数已经按照时间戳从大到小排好顺序了
 void SSTable::mergeTables(std::vector<SSTable*> &tableList)
 {
-//    // for debug
-//    std::cout << "---[begin func mergeTables]: tableList.size() = " << tableList.size() << std::endl;
     // 二分法合并
     uint64_t timeStamp = tableList[0]->header->timeStamp; // 取最大的作为新的时间戳
 
@@ -201,10 +160,7 @@ void SSTable::mergeTables(std::vector<SSTable*> &tableList)
 
 void SSTable::mergeRecursively(std::vector<SSTable*> &tableList)
 {
-//    // for debug
-//    std::cout << "  merge recursively: tableList.size() = " << tableList.size() << std::endl;
-
-    int size = tableList.size();
+   int size = tableList.size();
     if(size == 1)
     {
         return;
@@ -251,11 +207,6 @@ bool SSTable::findInSSTable(std::string &answer, uint64_t key)
     {
         return false;
     }
-//    // bloom filter
-//    if(!filter->searchInFilter(key))
-//    {
-//        return false;
-//    }
     // search in KVPairs
     for(auto it = KVPairs.begin(); it != KVPairs.end(); it++)
     {
@@ -420,10 +371,6 @@ void SSTableCache::setAllData(uint64_t minKey, uint64_t maxKey, uint64_t numberO
     this->header = new Header;
     this->header->setAllDataInHeader(timeStamp, numberOfPairs, minKey, maxKey);
     this->fileRoutine = fileName;
-    // fuck!!这里莫名把数据都清空了
-//    bloomFilter = new BloomFilter;
-//    indexArea = new IndexArea;
-//    this->timeStamp = currentTime;
 }
 
 
@@ -454,7 +401,7 @@ void SSTableCache::readFileToFormCache(std::string routine, std::string fileName
     std::ifstream  fin(routine, std::ios::in | std::ios::binary);
     if(!fin.is_open())
     {
-        std::cout << "open file error" << std::endl;
+        std::cout << "open file error! eason! " << routine << std::endl;
         return;
     }
 

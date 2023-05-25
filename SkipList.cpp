@@ -73,7 +73,6 @@ SkipNode *SkipList::searchNodePrivate(uint64_t keyToSearch) {
 
     SkipNode * searchingNode = & headGuards[currentHeight];
 
-    this->numberOfSearch ++;
 
     while(index > 0)
     {
@@ -81,7 +80,6 @@ SkipNode *SkipList::searchNodePrivate(uint64_t keyToSearch) {
         while(searchingNode->successorNode->isGuard != true && searchingNode->successorNode->key < keyToSearch)
         {
             searchingNode = searchingNode->successorNode;
-            this->numberOfSearch ++;
         }
         //如果下一个是哨兵，直接往下一层
         if(searchingNode->successorNode->isGuard)
@@ -89,7 +87,6 @@ SkipNode *SkipList::searchNodePrivate(uint64_t keyToSearch) {
             if(index != 1)
             {
                 searchingNode = searchingNode->underNode;
-                this->numberOfSearch ++;
             }
             else
             {
@@ -106,17 +103,14 @@ SkipNode *SkipList::searchNodePrivate(uint64_t keyToSearch) {
             else
             {
                 searchingNode = searchingNode->underNode;
-                this->numberOfSearch ++;
             }
         }
         else if(keyToSearch == searchingNode->successorNode->key)
         {
             searchingNode = searchingNode->successorNode;
-            this->numberOfSearch ++;
             while(searchingNode->underNode->underNode != nullptr)
             {
                 searchingNode = searchingNode->underNode;
-                this->numberOfSearch ++;
             }
 
             return searchingNode;
@@ -129,9 +123,8 @@ SkipNode *SkipList::searchNodePrivate(uint64_t keyToSearch) {
  * public的搜索函数，对外界开放
  * */
 SkipNode* SkipList::searchNode(uint64_t keyToSearch) {
-    //for testing efficiency
-    this->numberOfSearch = 0;
-
+//    // TODO for debug
+//    std::cout << "we begin to search in the skip list" << std::endl;
     SkipNode * answer = this->searchNodePrivate(keyToSearch);
 
     return answer;

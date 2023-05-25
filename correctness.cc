@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdint>
 #include <string>
+#include <fstream>
 
 #include "test.h"
 
@@ -8,7 +9,7 @@ class CorrectnessTest : public Test {
 private:
 	const uint64_t SIMPLE_TEST_MAX = 512;
 //	const uint64_t LARGE_TEST_MAX = 1024 * 64;
-    const uint64_t LARGE_TEST_MAX = 1024 * 10;
+    const uint64_t LARGE_TEST_MAX = 1024 * 32;
 
 	void regular_test(uint64_t max)
 	{
@@ -43,22 +44,22 @@ private:
             EXPECT(std::string(i+1, 's'), store.get(i));
         }
 
-        // TODO for debug
-        // 输出MemTable中的元素范围
-        std::cout << "min in memtable: " << store.memTable0->getMinKey() << std::endl;
-        std::cout << "max in memtable: " << store.memTable0->getMaxKey() << std::endl;
+//        // TODO for debug
+//        // 输出MemTable中的元素范围
+//        std::cout << "min in memtable: " << store.memTable0->getMinKey() << std::endl;
+//        std::cout << "max in memtable: " << store.memTable0->getMaxKey() << std::endl;
 
 
 
-        // TODO for debug
-        for(int i = 0; i < max; i++)
-        {
-            std::string answer = store.get(i);
-            if(answer != std::string(i+1, 's'))
-            {
-                std::cout << "error while finding existing: " << i << "   " << "answer:" << answer << std::endl;
-            }
-        }
+//        // TODO for debug
+//        for(int i = 0; i < max; i++)
+//        {
+//            std::string answer = store.get(i);
+//            if(answer != std::string(i+1, 's'))
+//            {
+//                std::cout << "error while finding existing: " << i << "   " << "answer:" << answer << std::endl;
+//            }
+//        }
 
 		phase();
 
@@ -101,32 +102,27 @@ private:
 		for (i = 0; i < max; ++i)
 			EXPECT((i & 1) ? std::string(i+1, 's') : not_found,
 			       store.get(i));
-////        // TODO for debug
-////        std::string answer = "";
-////        for (i = 0; i < max; ++i)
-////        {
-////            if(i % 2 == 0)
-////            {
-////                answer = store.get(i);
-////                if(answer != "")
-////                {
-////                    std::cout << "wrong i = " << i << ",answer = " << answer << std::endl;
-////                }
-////            }
-////            else
-////            {
-////                answer = store.get(i);
-////                if(answer != std::string(i+1, 's'))
-////                {
-////                    std::cout << "incorrect i = " << i << ",answer = " << answer << std::endl;
-////                }
-////            }
-////        }
+
 
 		for (i = 1; i < max; ++i)
 			EXPECT(i & 1, store.del(i));
 
 		phase();
+
+//        // TODO for debug 所有缓存信息写到文件
+//        // 把theCache中每一层包含几个文件，所有文件名的信息写到theCache.txt中
+//        std::ofstream out("theCache-correctness.txt");
+//        out << "theCache size: " << store.theCache.size() << std::endl;
+//
+//        for(int i = 0; i < store.theCache.size(); i++)
+//        {
+//            out << "level " << i << " size: " << store.theCache[i].size() << std::endl;
+//            for(int j = 0; j < store.theCache[i].size(); j++)
+//            {
+//                out << "level " << i << " file " << j << " name: " << store.theCache[i][j]->fileRoutine << std::endl;
+//            }
+//        }
+
 
 		report();
 	}
@@ -140,12 +136,12 @@ public:
 	{
 		std::cout << "KVStore Correctness Test" << std::endl;
 
-//		store.reset();
-//
-//		std::cout << "[Simple Test]" << std::endl;
-//		regular_test(SIMPLE_TEST_MAX);
-//
-//		std::cout << "finished simple test" << std::endl;
+		store.reset();
+
+		std::cout << "[Simple Test]" << std::endl;
+		regular_test(SIMPLE_TEST_MAX);
+
+		std::cout << "finished simple test" << std::endl;
 
 		store.reset();
 

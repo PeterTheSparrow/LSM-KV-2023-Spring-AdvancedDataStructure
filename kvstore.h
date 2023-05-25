@@ -16,7 +16,7 @@ public:
     MemTable * memTable0 = nullptr;
     uint64_t currentTimestamp = 0;
     std::string dataStoreDir;
-    std::vector<std::string> levelDir;  // 存储了每一层的目录的名称（注意是子目录的名称而非路径，如'level-0';
+    std::vector<std::string> levelDir;  // 存储了每一层的目录的名称（注意是子目录的名称而非路径，如'level-0'; 没有用处，只是函数需要这个参数
 
     // cache
     std::vector<std::vector<SSTableCache*>> theCache;
@@ -39,8 +39,6 @@ public:
 private:
     // 将Memtable转化到磁盘中
     void convertMemTableIntoMemory();
-    // 将Memtable转化到磁盘中，但是不往缓存中添加内容
-    void convertMemTableIntoMemoryWithoutCache();
 
     // 根据不同的缓存策略，实现不同的在磁盘里搜索的代码
     // 不缓存

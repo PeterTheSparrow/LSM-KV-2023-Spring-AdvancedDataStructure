@@ -10,8 +10,8 @@ add_executable(
         LSM_clion
         MurMurHash3.h
         BloomFilter.h
-        correctness.cc
-#        persistence.cc
+#        correctness.cc
+        persistence.cc
         kvstore.cpp kvstore.h kvstore_api.h
         Memtable.cpp Memtable.h
         SkipList.h SkipList.cpp

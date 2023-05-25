@@ -2,8 +2,10 @@
 #include <cstdint>
 #include <string>
 #include <cassert>
+#include <fstream>
 
 #include "test.h"
+#include "utils.h"
 
 /**
  * @brief 持久性测试
@@ -43,48 +45,23 @@ private:
 		// Test deletions
 		for (i = 0; i < max; i+=2)
 			EXPECT(true, store.del(i));
-        std::string answer;
 
 		// Prepare data for Test Mode
 		for (i = 0; i < max; ++i) {
 			switch (i & 3) {
 			case 0:
 				EXPECT(not_found, store.get(i));
-                answer = store.get(i);
-                // TODO for debug
-                if(answer != "")
-                {
-                    std::cout << "[expect:" << i << "] [for:" << answer << "]" << std::endl;
-                }
 				store.put(i, std::string(i+1, 't'));
 				break;
 			case 1:
 				EXPECT(std::string(i+1, 's'), store.get(i));
-                answer = store.get(i);
-                // TODO for debug
-                if(answer != std::string(i+1, 's'))
-                {
-                    std::cout << "[expect:" << i << "] [for:" << answer << "]" << std::endl;
-                }
 				store.put(i, std::string(i+1, 't'));
 				break;
 			case 2:
 				EXPECT(not_found, store.get(i));
-                // TODO for debug
-                answer = store.get(i);
-                if(answer != "")
-                {
-                    std::cout << "[expect:" << i << "] [for:" << answer << "]" << std::endl;
-                }
 				break;
 			case 3:
 				EXPECT(std::string(i+1, 's'), store.get(i));
-                answer = store.get(i);
-                // TODO for debug
-                if(answer != std::string(i+1, 's'))
-                {
-                    std::cout << "[expect:" << i << "] [for:" << answer << "]" << std::endl;
-                }
 				break;
 			default:
 				assert(0);
@@ -95,11 +72,27 @@ private:
 
 		report();
 
+        std::cout << "you have passed three stages" << std::endl;
+
 		/**
 		 * Write 10MB data to drain previous data out of memory.
 		 */
 		for (i = 0; i <= 10240; ++i)
-			store.put(max + i, std::string(1024, 'x'));
+        {
+            // TODO for debug
+            std::cout << "i: " << i << std::endl;
+            // 打印缓存信息
+            for(auto it = store.theCache.begin(); it != store.theCache.end(); it++)
+            {
+                std::cout << "level: " << it - store.theCache.begin() << " size: " << it->size() << std::endl;
+                for(auto it2 = it->begin(); it2 != it->end(); it2++)
+                {
+                    std::cout << "file name: " << (*it2)->fileRoutine << std::endl;
+                }
+            }
+
+            store.put(max + i, std::string(1024, 'x'));
+        }
 
 		std::cout << "Data is ready, please press ctrl-c/ctrl-d to"
 			" terminate this program!" << std::endl;
@@ -130,7 +123,7 @@ private:
 	void test(uint64_t max)
 	{
 		uint64_t i;
-		// Test data
+
 		for (i = 0; i < max; ++i) {
 			switch (i & 3) {
 			case 0:
