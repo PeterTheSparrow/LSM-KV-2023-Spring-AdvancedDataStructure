@@ -1,0 +1,37 @@
+==23717== 77,449,968 (66,288 direct, 77,383,680 indirect) bytes in 8,286 blocks are definitely lost in loss record 92 of 93
+==23717==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==23717==    by 0x11EC58: SSTable::convertFileToSSTable(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10E93C: KVStore::findInDisk3(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10D242: KVStore::get[abi:cxx11](unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x119FF4: CorrectnessTest::regular_test(unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x11AA39: CorrectnessTest::start_test(void*) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x119189: main (in /home/cdm/CLionProjects/LSM_clion/correctness)
+
+==23717== 42,447,216 (33,136 direct, 42,414,080 indirect) bytes in 4,142 blocks are definitely lost in loss record 85 of 93
+==23717==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==23717==    by 0x11EC58: SSTable::convertFileToSSTable(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10E93C: KVStore::findInDisk3(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10D242: KVStore::get[abi:cxx11](unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10D37E: KVStore::del(unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x11A3C7: CorrectnessTest::regular_test(unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x11AA39: CorrectnessTest::start_test(void*) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x119189: main (in /home/cdm/CLionProjects/LSM_clion/correctness)
+
+==23717== 42,447,216 (33,136 direct, 42,414,080 indirect) bytes in 4,142 blocks are definitely lost in loss record 84 of 93
+==23717==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==23717==    by 0x11EC58: SSTable::convertFileToSSTable(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10E93C: KVStore::findInDisk3(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10D242: KVStore::get[abi:cxx11](unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10D37E: KVStore::del(unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x11A190: CorrectnessTest::regular_test(unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x11AA39: CorrectnessTest::start_test(void*) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x119189: main (in /home/cdm/CLionProjects/LSM_clion/correctness)
+
+==23717== 42,416,472 (33,112 direct, 42,383,360 indirect) bytes in 4,139 blocks are definitely lost in loss record 83 of 93
+==23717==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==23717==    by 0x11EC58: SSTable::convertFileToSSTable(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10E93C: KVStore::findInDisk3(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >&, unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x10D242: KVStore::get[abi:cxx11](unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x11A267: CorrectnessTest::regular_test(unsigned long) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x11AA39: CorrectnessTest::start_test(void*) (in /home/cdm/CLionProjects/LSM_clion/correctness)
+==23717==    by 0x119189: main (in /home/cdm/CLionProjects/LSM_clion/correctness)

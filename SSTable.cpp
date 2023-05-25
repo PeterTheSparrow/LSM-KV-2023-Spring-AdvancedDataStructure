@@ -21,7 +21,12 @@ SSTable::~SSTable()
     delete[] dataArea;
     dataArea = nullptr;
 
+    delete filter;
+    filter = nullptr;
+
     dataSize = 0;
+
+    
 
     // swap释放KVPairs vector内存
     std::vector<KVNode>().swap(KVPairs);
@@ -102,6 +107,10 @@ int SSTable::convertFileToSSTable(std::string routine)
     fin.close();
 
     this->formKVVector();
+
+    delete[] dataArea;
+    dataArea = nullptr;
+
     return 0;
 }
 
@@ -148,6 +157,10 @@ SSTable* SSTable::mergeTwoTables(SSTable *&table1, SSTable *&table2)
             newTable->KVPairs.push_back(table1->KVPairs[i]);
         }
     }
+    delete table1;
+    table1 = nullptr;
+    delete table2;
+    table2 = nullptr;
     return newTable;
 }
 

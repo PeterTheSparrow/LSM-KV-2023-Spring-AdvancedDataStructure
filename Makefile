@@ -1,15 +1,9 @@
-
 LINK.o = $(LINK.cc)
 CXXFLAGS = -std=c++14 -Wall
 
 all: correctness persistence
 
-correctness: kvstore.o correctness.o SkipList.o MemTable.o SSTable.o
-	$(LINK.o) $^ -o $@
-
-persistence: kvstore.o persistence.o SkipList.o MemTable.o	SSTable.o
-
-MemTable.o: MemTable.cpp MemTable.h
+MemTable.o: Memtable.cpp Memtable.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 SSTable.o: SSTable.cpp SSTable.h
@@ -17,6 +11,11 @@ SSTable.o: SSTable.cpp SSTable.h
 
 SkipList.o: SkipList.cpp SkipList.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+correctness: kvstore.o correctness.o SkipList.o MemTable.o SSTable.o
+	$(LINK.o) $^ -o $@
+
+persistence: kvstore.o persistence.o SkipList.o MemTable.o	SSTable.o
 
 MyOwnTest.o: MyOwnTest.cpp SkipList.h SkipList.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -27,6 +26,9 @@ mytest: MyOwnTest.o SkipList.o
 
 clean:
 # linux下使用-rm，windows下使用-del
-# -rm -f correctness persistence *.o
-	del correctness persistence *.o
+	-rm -f correctness persistence *.o
+#del correctness persistence *.o
+
+valgrind_correctness: correctness
+	valgrind --leak-check=full ./correctness
 

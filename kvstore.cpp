@@ -477,31 +477,14 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 {
     // 遍历缓存，对于每一个缓存，用bloom filter判断是否存在，如果存在，再读文件查找，如果找到了，返回true
     // 如果没找到，则继续搜索，直到搜索完毕所有缓存为止
-
-
-//    // TODO for debug
-//    std::cout << "------we begin to find in disk3------" << std::endl;
-//
-//    std::cout << ">>>>>> the size of theCache: " << theCache.size() << std::endl;
     for(auto it1 = theCache.begin(); it1 != theCache.end(); it1++)
     {
-//        // TODO for debug
-//        std::cout << ">> the size of theCache[i]: " << it1->size() << std::endl;
-
         for(auto it2 = it1->begin(); it2 != it1->end(); it2++)
         {
             // 直接用bloom filter判断是否存在
 
-//            // TODO for debug: print out the max and min key of the cache
-//            std::cout << "the minKey of the cache: " << (*it2)->header->minKey << std::endl;
-//            std::cout << "the maxKey of the cache: " << (*it2)->header->maxKey << std::endl;
-
             if((*it2)->bloomFilter->searchInFilter(key))
             {
-//                // TODO for debug
-//                std::cout << ">> we find the key in the bloom filter!" << std::endl;
-//                std::cout << ">> the fileRoutine is: " << (*it2)->fileRoutine << std::endl;
-
                 std::string fileRoutine = (*it2)->fileRoutine;
                 SSTable * theSSTable = new SSTable;
                 theSSTable->convertFileToSSTable(fileRoutine);
