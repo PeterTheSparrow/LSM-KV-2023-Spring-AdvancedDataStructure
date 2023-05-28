@@ -56,12 +56,12 @@ make persistence
 ./persistence
 ```
 
-## design of the project
+## Design of the project
 
 the compaction of the SSTable is the most interesting and important part of the project.
 (refer to my code for detail!)
 
-## debug
+## Debug
 
 debug is a huge problem in the project.
 firstly i use the debug mode in clion to debug, it's really convenient, however 
@@ -72,7 +72,7 @@ and i asked TA, and i was informed that debug mode might change the memory layou
 so i choose to write all the data into a file, and then read the file to check the correctness.
 (actually i can use gdb as well, but i am not familiar with it, so i choose to write the data into a file.)
 
-## memory leak
+## Memory leak
 
 memory leak is a big problem in the project, so we need to use valgrind to check the memory leak.
 i did the check in Ubuntu22.04.
