@@ -1,5 +1,7 @@
-## Project LSM-KV: KVStore using Log-structured Merge Tree
+# Project LSM-KV: KVStore using Log-structured Merge Tree
 
+## Introduction
+This is the course project of Advanced Data Structure in SJTU 2023 Spring.
 
 The handout files include two main parts:
 
@@ -32,3 +34,51 @@ For the test files, of course you could modify it to debug your programs. But re
 
 Good luck :)
 
+## Build
+
+use make to build the project (please refer to the Makefile for details)
+
+```bash
+# make = make correctness + make persistence
+make
+# make the correctness test
+make correctness
+# make the persistence test
+make persistence
+```
+
+## Run
+
+```bash
+# run correctness test
+./correctness
+# run persistence test
+./persistence
+```
+
+## design of the project
+
+the compaction of the SSTable is the most interesting and important part of the project.
+(refer to my code for detail!)
+
+## debug
+
+debug is a huge problem in the project.
+firstly i use the debug mode in clion to debug, it's really convenient, however 
+it still fails when i run the test in the terminal.
+and i asked TA, and i was informed that debug mode might change the memory layout, so it's not recommended.
+(which means, if your code works in debug mode, it doesn't mean it will work in release mode, it might still be buggy.)
+
+so i choose to write all the data into a file, and then read the file to check the correctness.
+(actually i can use gdb as well, but i am not familiar with it, so i choose to write the data into a file.)
+
+## memory leak
+
+memory leak is a big problem in the project, so we need to use valgrind to check the memory leak.
+i did the check in Ubuntu22.04.
+(memory leak might be a severe problem in your skip-list, be careful with that.)
+
+```bash
+# also in makefile
+make valgrind_correctness
+```
