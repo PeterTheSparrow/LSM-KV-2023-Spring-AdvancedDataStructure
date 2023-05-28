@@ -24,9 +24,16 @@ MyOwnTest.o: MyOwnTest.cpp SkipList.h SkipList.cpp
 mytest: MyOwnTest.o SkipList.o
 	$(LINK.o) $^ -o $@	
 
+commonTest.o: commonTest.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# 测试
+test: commonTest.o SkipList.o SSTable.o MemTable.o kvstore.o
+	$(LINK.o) $^ -o $@
+
 clean:
+#-rm -f correctness persistence *.o
 # linux下使用-rm，windows下使用-del
-	#-rm -f correctness persistence *.o
 	del correctness persistence *.o
 
 valgrind_correctness: correctness

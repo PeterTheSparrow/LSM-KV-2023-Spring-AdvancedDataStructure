@@ -137,9 +137,9 @@ std::string KVStore::get(uint64_t key)
     }
 
     // 通过调用不同的函数，实现不同的缓存策略
-//    bool doFind = findInDisk1(answer, key);
+//   bool doFind = findInDisk1(answer, key);
 //    bool doFind = findInDisk2(answer, key);
-    bool doFind = findInDisk3(answer, key);
+     bool doFind = findInDisk3(answer, key);
     if(doFind)
     {
         if(answer == "~DELETED~")
@@ -486,15 +486,43 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
             // 直接用bloom filter判断是否存在
             if((*it2)->bloomFilter->searchInFilter(key))
             {
-                std::string fileRoutine = (*it2)->fileRoutine;
-                SSTable * theSSTable = new SSTable;
-                theSSTable->convertFileToSSTable(fileRoutine);
-                if(theSSTable->findInSSTable(answer, key))
+                // 若存在，先二分查找
+                int left = 0;
+                int right = (*it2)->indexArea->indexDataList.size() - 1;
+
+                while(left <= right)
                 {
-                    delete theSSTable;
-                    return true;
+                    int mid = (left + right) / 2;
+                    if((*it2)->indexArea->indexDataList[mid].key == key)
+                    {
+                        // 找到了，直接读取文件
+                        std::string fileRoutine = (*it2)->fileRoutine;
+                        SSTable * theSSTable = new SSTable;
+                        theSSTable->convertFileToSSTable(fileRoutine);
+                        theSSTable->findInSSTable(answer, key);
+                        delete theSSTable;
+                        return true;
+                    }
+                    else if((*it2)->indexArea->indexDataList[mid].key < key)
+                    {
+                        left = mid + 1;
+                    }
+                    else
+                    {
+                        right = mid - 1;
+                    }
                 }
-                delete theSSTable;
+
+
+//                std::string fileRoutine = (*it2)->fileRoutine;
+//                SSTable * theSSTable = new SSTable;
+//                theSSTable->convertFileToSSTable(fileRoutine);
+//                if(theSSTable->findInSSTable(answer, key))
+//                {
+//                    delete theSSTable;
+//                    return true;
+//                }
+//                delete theSSTable;
             }
         }
     }
