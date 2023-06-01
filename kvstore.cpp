@@ -7,7 +7,6 @@
 
 /**
  * @brief KVStore的构造函数
- *
  * @param dir 数据存储的目录
  * */
 KVStore::KVStore(const std::string &dir) : KVStoreAPI(dir)
@@ -120,6 +119,8 @@ void KVStore::put(uint64_t key, const std::string &s)
     // 没有超过大小，直接在跳表里面插入
     memTable0->put(key, s);
 }
+
+
 /**
  * Returns the (string) value of the given key.
  * An empty string indicates not found.
@@ -353,8 +354,12 @@ void KVStore::convertMemTableIntoMemory()
 
 
 
-// 不缓存，直接在文件里查找
-// TODO 未检查内存泄漏
+/**
+ * @brief KVStore::findInDisk1 不使用缓存在内存中的index和bloomfilter，根据文件名读文件查找
+ * @param answer 返回的value
+ * @param key 要查找的key
+ * @return 是否找到
+ * */
 bool KVStore::findInDisk1(std::string & answer, uint64_t key)
 {
     if(this->theCache.empty())
@@ -419,8 +424,13 @@ bool KVStore::findInDisk1(std::string & answer, uint64_t key)
     return false;
 }
 
-// 缓存index，使用binary search
-// this is buggy!! 实现+检测内存泄漏
+
+/**
+ * @brief KVStore::findInDisk2 使用缓存在内存中的index，进行二分查找，找到以后读文件
+ * @param answer 返回的value
+ * @param key 要查找的key
+ * @return 是否找到
+ * */
 bool KVStore::findInDisk2(std::string & answer, uint64_t key)
 {
     // 遍历缓存，在缓存中搜索，如果搜索到了，直接查询对应的文件即可
@@ -473,8 +483,14 @@ bool KVStore::findInDisk2(std::string & answer, uint64_t key)
     return false;
 }
 
-// 缓存index和bloom filter
-// 实现+检测内存泄漏
+
+
+/**
+ * @brief KVStore::findInDisk3 使用缓存在内存中的index和bloom filter，先过滤，后二分，再读文件
+ * @param answer 返回的value
+ * @param key 要查找的key
+ * @return 是否找到
+ **/
 bool KVStore::findInDisk3(std::string & answer, uint64_t key)
 {
     // 遍历缓存，对于每一个缓存，用bloom filter判断是否存在，如果存在，再读文件查找，如果找到了，返回true
@@ -530,16 +546,19 @@ bool KVStore::findInDisk3(std::string & answer, uint64_t key)
     return false;
 }
 
-// 遍历缓存，查看每一层是否需要merge
+
+/**
+ * @brief 遍历缓存中的每一层，判断每一层的文件数是否超过阈值，如果超过，就进行归并
+ **/
 void KVStore::checkCompaction()
 {
     int maxFileNum = LEVEL_CHANGE;
 
-    // // for debug 直接把第0层开到无穷大
-//    int maxFileNum = INT_MAX;
+
     int height = this->theCache.size();
 
-    for(int i = 0; i < height; i++)
+    for(int i = 0; i < height; i++)    // // for debug 直接把第0层开到无穷大
+//    int maxFileNum = INT_MAX;
     {
         if(this->theCache[i].empty()) // 未初始化的vector，直接调用size()函数会得到垃圾值
         {
@@ -558,7 +577,9 @@ void KVStore::checkCompaction()
     }
 }
 
-// 归并某个特定的层
+/**
+ * @brief KVStore::compactSingleLevel 归并单层
+ * */
 void KVStore::compactSingleLevel(int levelNum)
 {
     std::vector<SSTable *> tablesToMerge;
@@ -695,6 +716,10 @@ void KVStore::compactSingleLevel(int levelNum)
     std::sort(this->theCache[levelNum].begin(), this->theCache[levelNum].end(), SSTableCache::CompareSSTableCache);
 }
 
+/**
+ * @brief 将所有缓存的信息写入文件(for debug)
+ * @param whereEnter 从哪里进入的这个函数（就是为了看哪里出错了，没有别的含义）
+ * */
 void KVStore::WriteAllCacheInfo(int whereEnter) {
     // 将当前所有缓存的信息写入文件
     std::ofstream out;

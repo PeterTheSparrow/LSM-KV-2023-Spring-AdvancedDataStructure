@@ -1,0 +1,307 @@
+% \documentclass[fontset=windows]{article}
+% \usepackage[]{ctex}
+% \usepackage[a4paper, total={6in, 8in}]{geometry}
+\documentclass[fontset=windows]{article}
+\usepackage[]{ctex}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+\usepackage{color}
+\usepackage{listings}
+\lstset{ %
+language=C++,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+stepnumber=1,                   % the step between two line-numbers. If it is 1 each line will be numbered
+numbersep=5pt,                  % how far the line-numbers are from the code
+backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces adding particular underscores
+showstringspaces=false,         % underline spaces within strings
+showtabs=false,                 % show tabs within strings adding particular underscores
+frame=single,           % adds a frame around the code
+tabsize=2,          % sets default tabsize to 2 spaces
+captionpos=b,           % sets the caption-position to bottom
+breaklines=true,        % sets automatic line breaking
+breakatwhitespace=false,    % sets if automatic breaks should only happen at whitespace
+escapeinside={\%*}{*)}          % if you want to add a comment within your code
+}
+
+
+
+\title{LSM-KV 项目报告}
+\author{张祺骥 521021910739}
+\date{2023年 5月 23日}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\bibliographystyle{plain}
+
+\begin{document}
+
+\maketitle
+
+\section{背景介绍}
+LSM-Tree是一种基于磁盘的键值存储结构，其主要思想是将数据存储在多个有序的文件中，这些文件被称为SSTable，每个SSTable都有一个索引文件，用于加速查找。LSM-Tree的主要优势是写入速度快，但是读取速度较慢，因此在读多写少的场景下表现较好。LSM-Tree的主要应用场景是键值存储系统，比如LevelDB、RocksDB等。
+
+本次项目的目标是实现一个基于LSM-Tree的键值存储系统，即LSM-KV。需要支持的操作包括PUT、GET、DELETE，以及Compaction。
+
+\section{设计}
+
+对于整个项目的设计我花了很长的时间来思考和完善。也经过了几次的修改和返工。
+
+\subsection{磁盘}
+
+辅助数据结构的设计如下：
+
+\begin{lstlisting}
+struct Header
+{
+    uint64_t timeStamp;
+    uint64_t keyValueNum;
+    uint64_t minKey;
+    uint64_t maxKey;
+    ...
+};
+struct IndexData
+{
+    uint64_t key;
+    uint32_t offset;
+    ...
+};
+struct IndexArea
+{
+    std::vector<IndexData> indexDataList;
+    ...
+};
+struct KVNode
+{
+    uint64_t key;
+    std::string value;
+    ...
+};
+\end{lstlisting}
+
+SSTable的设计如下：
+
+\begin{lstlisting}
+class SSTable
+{
+public:
+    std::string fileName;
+    Header *header = nullptr;
+    BloomFilter *filter = nullptr; // 10240字节
+    IndexArea *indexArea = nullptr;
+    char *dataArea = nullptr;
+
+    uint32_t dataSize = 0;
+
+    // 用于合并SSTable的时候用（因为如果是char来存储数据的话，没有办法merge）
+    std::vector<KVNode> KVPairs;
+
+public:
+    // 读取所有char中的信息，生成键值对的vector，加速查找、用于compaction
+    void formKVVector();
+    // merge两张表。此处默认第一张表时间戳大于第二张表、第一张表层级低于第二张表（第0层为最低级）
+    static SSTable* mergeTwoTables(SSTable *&table1, SSTable *&table2);
+    // 把merge完以后巨大的SSTable切开
+    std::vector<SSTableCache *> splitAndSave(std::string routine, int counter);
+    // 切出来一个单独的SSTable，返回这个SSTable对应的SSTableCache
+    SSTableCache * cutOutOneSSTable(int fileTag, std::string routine, int & currentSize);
+    // 这个是留给外面的类调用的
+    static void mergeTables(std::vector<SSTable*> &tableList);
+    ...
+private:
+    static void mergeRecursively(std::vector<SSTable*> &tableList);
+};
+
+
+\end{lstlisting}
+
+\subsection{内存}
+
+内存我使用了之前作业的时候编写的跳表。此处不加赘述。
+
+
+\subsection{缓存}
+
+\begin{lstlisting}
+class SSTableCache
+{
+public:
+    Header *header;
+    BloomFilter *bloomFilter;
+    IndexArea *indexArea;
+    std::string fileRoutine;
+
+    // 由于可能存在时间戳相同的文件，因此需要用index将其区分
+    uint64_t timeStampIndex = 0; 
+    ...
+};
+\end{lstlisting}
+
+\section{测试}
+
+\subsection{测试环境}
+
+\begin{enumerate}
+    \item 机型：DELL DESKTOP-FK33F9A
+    \item 处理器：11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz   1.69 GHz
+    \item 机带RAM：16.0 GB (15.7 GB 可用)
+    \item 系统类型：64 位操作系统, 基于 x64 的处理器
+\end{enumerate}
+
+\subsection{性能测试}
+
+\subsubsection{预期结果}
+
+\begin{enumerate}
+    \item find in memory：由于memory中使用skip list存储，因此查找的时间复杂度是O(logn)，因此预期结果是随着数据量的增加，查找时间的增加是不明显的。
+    \item find in disk：现在缓存中查找；缓存中由于缓存了bloom filter，因此判否的时间复杂度是线性的；若使用二分查找在index area里面查找，时间复杂度为O(logn)。
+    \item put(without merge)：不发生归并的情况下，相当于在skip list中插入数据；因此时间复杂度为O(logn)。
+    \item put(with merge)：根据实际情况而定，较难估计。
+\end{enumerate}
+
+\subsubsection{常规分析}
+
+
+执行了四组测试。四组测试中，插入的键值对数目均为20000个。四组测试的value大小分别为512，1024，2048，4096字节。延迟量数据如表\ref{table1}所示。
+
+\begin{table}[h!]
+    \begin{center}
+      \caption{不同数据大小PUT, GET, DEL 操作平均延迟}
+      \label{table1}
+      \begin{tabular}{c|c|c|c}
+        \textbf{数据大小/bytes} & \textbf{put延迟/us} & \textbf{get延迟/us} & \textbf{del延迟/us}\\
+        \hline
+        512 & 67.5161 & 3054.96 & 3083.28 \\
+        1024 & 90.1122 & 2337.58 & 2316.6 \\
+        2048 & 49.0046 & 1601.63 & 1512.99 \\
+        4096 & 64.0194 & 1386.95 & 1394.3 \\
+        \hline
+      \end{tabular}
+    \end{center}
+\end{table}
+
+lsm的特点就是写入速度快，读取速度较慢。因此上述数据大体上是符合预期的。
+
+get和del的时间复杂度是相近的，这是符合预期的。因为在我实现的算法中，删除前进行了一次全局搜索（若没有搜索到，实际上就可以直接不插入代表删除的tag）。而put的延迟相对于get是很低的；因此del的延迟基本和get相当。
+
+选取4096bytes的情况下，吞吐量数据如表\ref{table2}所示。
+
+\begin{table}[h!]
+    \begin{center}
+      \caption{数据量 4096 bytes 时三种操作的吞吐}
+      \label{table2}
+      \begin{tabular}{c|c|c|c}
+        \textbf{数据量/bytes} & \textbf{put/$s^{-1}$} & \textbf{get/$s^{-1}$} & \textbf{del/$s^{-1}$}\\
+        \hline
+        4096 & 15620.3 & 721.007 & 717.206 \\ 
+      \end{tabular}
+    \end{center}
+\end{table}
+
+
+\subsubsection{索引缓存与Bloom Filter的效果测试}
+对比下面三种情况GET操作的平均时延：
+\begin{enumerate}
+    \item 内存中没有缓存SSTable的任何信息，从磁盘中访问SSTable的索引，在找到offset之后读取数据。
+    \item 内存中只缓存了SSTable的索引信息，通过二分查找从SSTable的索引中找到offset，并在磁盘中读取对应的值。
+    \item 内存中缓存SSTable的Bloom Filter和索引，先通过Bloom Filter判断一个键值是否可能在一个SSTable中，如果存在再利用二分查找，否则直接查看下一个SSTable的索引。
+\end{enumerate}
+
+\begin{table}[h!]
+    \begin{center}
+      \caption{不同缓存策略下GET平均时延}
+      \label{table3}
+      \begin{tabular}{c|c|c|c}
+        \textbf{数据量/byte} & \textbf{无缓存/ms} & \textbf{索引/us} & \textbf{索引与布隆过滤器/us}\\
+        \hline
+        512 & 6727.12 & 2184.19 & 3054.96 \\
+        1024 & 7950.77 & 1453.56 & 2337.58 \\
+        2048 & 14760.9 & 1414.13 & 1601.63 \\
+        4096 & 34822.8 & 1393.77 & 1386.95 \\
+        \hline
+        average & 16065.39 & 1611.412 & 2095.28 \\ 
+      \end{tabular}
+    \end{center}
+\end{table}
+
+可以发现，很明显无缓存时，延迟是非常巨大的，比有缓存时大了一个数量级左右。单纯缓存index时提升性能的效果是最好的；缓存bloom filter+index时性能稍逊色于index；有可能是自己实现的bloom filter本身调用耗时相较于std::vector中查找实际上耗时更久。
+
+\subsubsection{Level配置的影响}
+本节中我探究了每一层最大文件数目对于系统put操作的时延的影响。对于leveling和tiering的配置，和默认配置相同。
+
+测试了下面几种情况：
+\begin{enumerate}
+    \item 每层文件数目为公比为2的等比数列；第0层为2个，第1层为4个，依此类推。第n层为$2^{n+1}$。
+    
+    \item 每层文件数目为公比为3的等比数列；第0层为3个，第1层为9个，依此类推。第n层为$3^{n+1}$。
+    
+    \item 每层文件数目为公比为5的等比数列；第0层为3个，第1层为9个，依此类推。第n层为$5^{n+1}$。
+    
+    \item 每层文件数目为公比为7的等比数列；第0层为3个，第1层为9个，依此类推。第n层为$7^{n+1}$。
+\end{enumerate}
+
+插入数据为：100000个kv-pairs，每个value的大小为2048bytes。
+
+测试得到的数据如表\ref{table4}所示。
+
+\begin{table}[h!]
+    \begin{center}
+      \caption{不同level配置对latency的影响}
+      \label{table4}
+      \begin{tabular}{c|c|c|c}
+        \textbf{等比数列公比} & \textbf{put latency/$us$} \\
+        \hline
+        2 & 125.405 \\ 
+        3 & 129.969 \\
+        5 & 138.564 \\
+        7 & 180.868 \\
+      \end{tabular}
+    \end{center}
+\end{table}
+
+可以看到，等比数列公比越大，性能越差。原因如下：
+
+（1）较低层文件数目较多时（认为level0为最低级），由于level0在compaction时需要包括所有文件，因此当level0文件数目较多时，会带来compaction时巨大的开销增长。
+
+（2）较低层文件数目较多也意味着每次查找目标键值对的时候需要遍历更多的文件，因此时间开销会更大。
+
+指导建议：
+
+（1）level较低的层级（认为level0为最低级），文件数目配置通常应该较小。较小的文件数目可以提高读取性能，因为查找目标键值时需要遍历较少的文件。较小的文件数目还可以减少合并操作的开销。
+
+（2）层级较高的时候，文件数目配置通常可以比较大。较大的文件数目可以提高存储空间利用率，因为较大的文件可以更好地利用磁盘块的大小。但是，较大的文件数目可能会降低读取性能。而注意到，层级较高意味着这些数据存在的时间已经较长，被访问的概率相比于低层级的数据是低得多的，因此我们把较高层级中文件数目的最大值设置的比较大也是合理的。
+
+
+\section{结论}
+整个project我还是颇花了一番功夫去实现。我认为最困难的部分是先去设计出来整个架构。但是设计的时候也是不可能面面俱到的，在实际coding的时候我也一直遇到各种问题，需要见招拆招去解决。
+
+project能通过两个测试，正确性得到保证。
+
+\section{其他}
+
+这里我想记录我遇到的一些困难。
+
+\subsection{换了又换的编辑器/IDE}
+以前一直使用的是clion，这次发现是makefile，印象中clion好像对makefile不太友善（后来发现其实是支持的，就是近几年更新以后的事情），就换了vscode。这也是我第一次用vsc来写cpp。总之花了很久上手vscode。
+
+后来我突然意识到，其实也可以用cmake啊！我自己写一个不就完了！于是果断换回熟悉的clion。比起vscode里面土鳖地cout，clion里面断点debug可爽了。
+
+但是后来突然间发现clion里面cmake能跑过的测试，换makefile又不能过了；询问了助教以后才发现，clion里面默认cmake是用debug模式来编译的，debug下栈的布局和非debug有不一致，有些内存越界可能在debug下没有破坏重要的数据，Debug下没有问题不代表bug free。
+
+于是心态直接崩了（只不过是从头再来！）。后来又换回了makefile来写，在clion里面直接用命令行运行了。
+
+前前后后，在工具上面我真的折腾了很久。后来为了检测memory leaking，就把项目挂到github，在ubuntu22.04虚拟机里面直接从github上面把项目整个拉下来，再用valgrind查。
+
+虽然折腾，但是学到了很多东西！很感激助教对我各式各样的啰里啰唆的问题都能够不厌其烦地解答。
+
+\subsection{bug记录}
+这里记录我碰到的几个让我de了很久的bug：
+\begin{enumerate}
+    \item timeStamp-index。对于每个SSTable，我以时间戳命名；我已经预料到后面切割SSTable的时候会出现重名的SSTable，所以我提前加了-index作为后缀来区分；但我没意识到后缀是不能从0开始的，因为下一层有可能也会出现同名的文件，导致缓存里面出现异常，或者写文件的时候直接覆写导致数据丢失；这导致出现了很诡异的查找不到的情况（此bug耗时两天debug）。
+    \item 布隆过滤器的bug：在char和bool的转换上。我原本以为可以直接用01代表true、false来直接转换。我被坑了好长时间。cpp里面对于这个东西的要求还是很严格的。（此bug耗时约一天）
+\end{enumerate}
+
+
+\end{document}
