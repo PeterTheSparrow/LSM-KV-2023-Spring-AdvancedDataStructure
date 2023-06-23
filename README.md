@@ -1,6 +1,6 @@
 # Project LSM-KV: KVStore using Log-structured Merge Tree
 
-## Introduction
+## Introduction1 (before implementation)
 This is the course project of Advanced Data Structure in SJTU 2023 Spring.
 
 The handout files include two main parts:
@@ -34,6 +34,31 @@ For the test files, of course you could modify it to debug your programs. But re
 
 Good luck :)
 
+## Introduction2 (after implementation)
+
+```text
+.
+├── Makefile       // Makefile if you use GNU Make
+├── README.md      // This readme file
+├── correctness.cc // Correctness test, you should not modify this file
+├── data           // Data directory used in our test
+├── kvstore.cc     // your implementation
+├── kvstore.h      // your implementation
+├── kvstore_api.h  // KVStoreAPI, you should not modify this file
+├── persistence.cc // Persistence test, you should not modify this file
+├── utils.h        // Provides some cross-platform file/directory interface
+├── MurmurHash3.h  // Provides murmur3 hash function
+├── test.h         // Base class for testing, you should not modify this file
+├── SkipList.h     // SkipList 
+├── SkipList.cpp   // SkipList
+├── Memtable.h     // Memtable
+├── Memtable.cpp   // Memtable
+├── SSTable.h      // SSTable
+├── SSTable.cpp    // SSTable
+├── BloomFilter.h  // BloomFilter
+
+```
+
 ## Build
 
 use make to build the project (please refer to the Makefile for details)
@@ -58,15 +83,15 @@ make persistence
 
 ## Design of the project
 
-the compaction of the SSTable is the most interesting and important part of the project.
+The compaction of the SSTable is the most interesting and important part of the project.
 (refer to my code for detail!)
 
 ## Debug
 
-debug is a huge problem in the project.
-firstly i use the debug mode in clion to debug, it's really convenient, however 
+Debug is a huge problem in the project.
+Firstly i use the debug mode in clion to debug, it's really convenient, however 
 it still fails when i run the test in the terminal.
-and i asked TA, and i was informed that debug mode might change the memory layout, so it's not recommended.
+So i asked TA, and i was informed that debug mode might change the memory layout, so it's not recommended.
 (which means, if your code works in debug mode, it doesn't mean it will work in release mode, it might still be buggy.)
 
 so i choose to write all the data into a file, and then read the file to check the correctness.
